@@ -21,12 +21,16 @@ def main() -> None:
     logger.info("Iniciando scraper...")
 
     try:
+        # Configuracion del driver
         web_config = load_web_config(logger)
         driver_config = DriverConfig(**settings.DRIVER_CONFIG)
         driver = driver_config.get_driver()
 
         try:
+            # Proceso de Scraping
             datos = scrape(driver, web_config, logger)
+
+            # Escritura de los resultados en los formatos configurados
             output_formats = settings.STORAGE_CONFIG.get("output_formats", ["csv"])
             for formato in output_formats:
                 save_data(datos, formato, settings.DATA_CONFIG, settings.STORAGE_CONFIG)

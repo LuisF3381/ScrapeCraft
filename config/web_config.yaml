@@ -1,5 +1,7 @@
+# url de la web
 url: "https://www.adondevivir.com/inmuebles-en-alquiler.html"
 
+# selectores de los elementos web
 xpath_selectors:
   container: '//div[@class="postingCard-module__posting-container"]'
   Precio: './/div[@class="postingPrices-module__price"]'
@@ -7,6 +9,7 @@ xpath_selectors:
   Caracteristicas: './/h3'
   Descripcion: './/div[@data-qa="POSTING_CARD_DESCRIPTION"]'
 
+# waits en segundos para esperar elementos
 waits:
   reconnect_attempts: 3
   after_load: 5

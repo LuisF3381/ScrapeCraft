@@ -20,10 +20,12 @@ def build_filepath(storage_config: dict, format: str) -> str:
     naming_mode: str = storage_config["naming_mode"]
     extension: str = format
 
+    # Obtenemos la fecha actual
     now = datetime.now()
     date_str: str = now.strftime("%Y%m%d")
     timestamp_str: str = now.strftime("%Y%m%d_%H%M%S")
 
+    # Seleccion del modo correspondiente de escritura
     if naming_mode == "overwrite":
         filepath = os.path.join(output_folder, f"{filename}.{extension}")
 
@@ -54,6 +56,7 @@ def save_data(datos: list[dict], format: str, data_config: dict, storage_config:
         data_config: Diccionario con configuraciones de cada formato
         storage_config: Diccionario con configuracion de almacenamiento
     """
+    # Verificamos el formato
     if format not in data_config:
         raise ValueError(f"Formato no soportado: {format}. Disponibles: {list(data_config.keys())}")
 
@@ -61,6 +64,7 @@ def save_data(datos: list[dict], format: str, data_config: dict, storage_config:
     config: dict = data_config[format]
     filepath: str = build_filepath(storage_config, format)
 
+    # Escritura en el formato correspondiente
     if format == "csv":
         df.to_csv(
             filepath,
