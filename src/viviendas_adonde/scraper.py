@@ -4,15 +4,16 @@ from selenium.webdriver.common.by import By
 from seleniumbase import Driver
 from src.viviendas_adonde.utils import parse_record
 
+logger = logging.getLogger(__name__)
 
-def scrape(driver: Driver, web_config: dict, logger: logging.Logger) -> list[dict]:
+
+def scrape(driver: Driver, web_config: dict) -> list[dict]:
     """
     Extrae datos desde la URL usando los selectores del archivo de configuracion.
 
     Args:
         driver:     Instancia del driver de SeleniumBase
         web_config: Diccionario con url, xpath_selectors y waits
-        logger:     Logger para registrar eventos
 
     Returns:
         list[dict]: Lista de diccionarios con los datos extraidos

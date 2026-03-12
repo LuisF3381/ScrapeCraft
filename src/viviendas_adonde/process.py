@@ -2,8 +2,10 @@ import logging
 import os
 import pandas as pd
 
+logger = logging.getLogger(__name__)
 
-def process(filename: str, extension: str, suffix: str, raw_config: dict, logger: logging.Logger | None = None) -> list[dict]:
+
+def process(filename: str, extension: str, suffix: str, raw_config: dict) -> list[dict]:
     """
     Lee el archivo raw y aplica transformaciones a los datos.
 
@@ -12,7 +14,6 @@ def process(filename: str, extension: str, suffix: str, raw_config: dict, logger
         extension:  Extension del archivo   (ej: "csv")
         suffix:     Sufijo timestamp de la ejecucion (ej: "20260312_143052")
         raw_config: Diccionario con configuracion del raw
-        logger:     Logger para registrar eventos
 
     Returns:
         list[dict]: Lista de diccionarios con los datos procesados
@@ -41,7 +42,6 @@ def process(filename: str, extension: str, suffix: str, raw_config: dict, logger
         )
 
     # --- Fin del procesamiento ---
-    if logger:
-        logger.info(f"Procesamiento completado: {len(df)} registros")
+    logger.info(f"Procesamiento completado: {len(df)} registros")
 
     return df.to_dict(orient="records")

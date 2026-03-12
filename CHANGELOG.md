@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0] - 2026-03-12
+
+### Changed
+- `setup_logger()` en `logger.py` ahora recibe `job_name` como primer parametro y no retorna nada; el archivo de log pasa de `scrapecraft_YYYYMMDD.log` a `<job_name>_YYYYMMDD.log`
+- Logger configurado sobre el nodo raiz `"src"` en lugar de `"scrapecraft"`, permitiendo que todos los modulos bajo `src.*` propaguen automaticamente sin recibir el logger como parametro
+- Todos los modulos (`scraper.py`, `process.py`, `storage.py`, `app_job.py`) declaran `logger = logging.getLogger(__name__)` a nivel de modulo y eliminan `logger` de sus firmas de funcion
+- `app_job.py` llama `setup_logger(_JOB_NAME, **global_settings.LOG_CONFIG)` en lugar de asignar el retorno
+
+### Architecture
+- Patron de logging cambiado de **inyeccion de dependencia** (pasar `logger` como parametro) a **logger jerarquico** (propagacion automatica via `getLogger(__name__)`)
+- Cada job genera su propio archivo de log nombrado por proceso: `log/viviendas_adonde_20260312.log`, `log/otro_job_20260312.log`
+- Multiples ejecuciones del mismo job en el mismo dia acumulan en el mismo archivo (append)
+
 ## [0.15.0] - 2026-03-12
 
 ### Changed

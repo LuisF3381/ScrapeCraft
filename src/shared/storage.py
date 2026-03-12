@@ -3,6 +3,8 @@ import os
 from datetime import datetime
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
 
 def build_filepath(storage_config: dict, format: str) -> str:
     """
@@ -49,7 +51,7 @@ def build_filepath(storage_config: dict, format: str) -> str:
     return filepath
 
 
-def save_data(datos: list[dict], format: str, data_config: dict, storage_config: dict, logger: logging.Logger | None = None) -> None:
+def save_data(datos: list[dict], format: str, data_config: dict, storage_config: dict) -> None:
     """
     Guarda los datos en el formato y ubicacion especificados.
 
@@ -58,7 +60,6 @@ def save_data(datos: list[dict], format: str, data_config: dict, storage_config:
         format:         Formato de salida (csv, json, xml, xlsx)
         data_config:    Diccionario con configuraciones de cada formato
         storage_config: Diccionario con configuracion de almacenamiento
-        logger:         Logger para registrar eventos
     """
     # Verificamos el formato
     if format not in data_config:
@@ -103,18 +104,16 @@ def save_data(datos: list[dict], format: str, data_config: dict, storage_config:
     else:
         raise ValueError(f"Formato no soportado: {format}")
 
-    if logger:
-        logger.info(f"Datos guardados en {filepath} ({len(datos)} registros)")
+    logger.info(f"Datos guardados en {filepath} ({len(datos)} registros)")
 
 
-def save_raw(datos: list[dict], raw_config: dict, logger: logging.Logger | None = None) -> str:
+def save_raw(datos: list[dict], raw_config: dict) -> str:
     """
     Guarda los datos en bruto como CSV con sufijo timestamp.
 
     Args:
         datos:      Lista de diccionarios con los datos a guardar
         raw_config: Diccionario con configuracion del raw
-        logger:     Logger para registrar eventos
 
     Returns:
         str: Sufijo timestamp generado (ej: "20260312_143052")
@@ -130,8 +129,7 @@ def save_raw(datos: list[dict], raw_config: dict, logger: logging.Logger | None 
     df: pd.DataFrame = pd.DataFrame(datos)
     df.to_csv(filepath, index=False, encoding="utf-8")
 
-    if logger:
-        logger.info(f"Raw guardado en {filepath} ({len(datos)} registros)")
+    logger.info(f"Raw guardado en {filepath} ({len(datos)} registros)")
 
     return suffix
 
@@ -154,13 +152,12 @@ def load_raw(filename: str, extension: str, suffix: str, raw_config: dict) -> li
     return pd.read_csv(filepath).to_dict(orient="records")
 
 
-def cleanup_raw(raw_config: dict, logger: logging.Logger | None = None) -> None:
+def cleanup_raw(raw_config: dict) -> None:
     """
     Limpia archivos raw segun la politica de retencion configurada.
 
     Args:
         raw_config: Diccionario con configuracion del raw
-        logger:     Logger para registrar eventos
     """
     raw_folder: str = raw_config["raw_folder"]
     filename: str = raw_config["filename"]
@@ -196,5 +193,4 @@ def cleanup_raw(raw_config: dict, logger: logging.Logger | None = None) -> None:
 
     for filepath in files_to_delete:
         os.remove(filepath)
-        if logger:
-            logger.info(f"Raw eliminado: {filepath}")
+        logger.info(f"Raw eliminado: {filepath}")

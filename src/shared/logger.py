@@ -3,26 +3,26 @@ import os
 from datetime import datetime
 
 
-def setup_logger(log_folder: str = "log", level: str = "INFO") -> logging.Logger:
+def setup_logger(job_name: str, log_folder: str = "log", level: str = "INFO") -> None:
     """
-    Configura logger con salida a archivo y consola.
+    Configura el logger raiz "src" con salida a archivo y consola.
+    Debe llamarse una sola vez al inicio del proceso desde app_job.py.
+    Los modulos hijos usan logging.getLogger(__name__) y propagan automaticamente.
 
     Args:
+        job_name:   Nombre del job (se usa para nombrar el archivo de log)
         log_folder: Carpeta donde se guardan los logs
-        level: Nivel de logging (DEBUG, INFO, WARNING, ERROR)
-
-    Returns:
-        Logger configurado
+        level:      Nivel de logging (DEBUG, INFO, WARNING, ERROR)
     """
     os.makedirs(log_folder, exist_ok=True)
 
-    log_file: str = os.path.join(log_folder, f"scrapecraft_{datetime.now():%Y%m%d}.log")
+    log_file: str = os.path.join(log_folder, f"{job_name}_{datetime.now():%Y%m%d}.log")
 
-    logger: logging.Logger = logging.getLogger("scrapecraft")
+    logger: logging.Logger = logging.getLogger("src")
     logger.setLevel(getattr(logging, level.upper()))
 
     if logger.handlers:
-        return logger
+        return
 
     formatter: logging.Formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
@@ -34,5 +34,3 @@ def setup_logger(log_folder: str = "log", level: str = "INFO") -> logging.Logger
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-
-    return logger

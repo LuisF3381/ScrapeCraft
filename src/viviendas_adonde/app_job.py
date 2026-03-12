@@ -10,6 +10,8 @@ from src.viviendas_adonde.process import process
 from config import global_settings
 from config.viviendas_adonde import settings
 
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 # FLUJO ETL — vision general
 #
@@ -39,12 +41,11 @@ _JOB_NAME = Path(__file__).parent.name
 WEB_CONFIG_PATH = f"config/{_JOB_NAME}/web_config.yaml"
 
 
-def load_web_config(logger: logging.Logger | None = None) -> dict:
+def load_web_config() -> dict:
     """Carga la configuracion de la web desde el archivo YAML."""
     with open(WEB_CONFIG_PATH, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    if logger:
-        logger.info(f"Configuracion cargada: {config['url']}")
+    logger.info(f"Configuracion cargada: {config['url']}")
     return config
 
 
@@ -52,19 +53,19 @@ def load_web_config(logger: logging.Logger | None = None) -> dict:
 # Flujos internos (no modificar)
 # ---------------------------------------------------------------------------
 
-def _run_full(logger: logging.Logger) -> list[dict]:
+def _run_full() -> list[dict]:
     """Flujo completo: scraping → raw → (proceso opcional) → limpieza de raw."""
     logger.info("Iniciando scraper...")
 
-    web_config = load_web_config(logger)
+    web_config = load_web_config()
     driver = DriverConfig(**settings.DRIVER_CONFIG).get_driver()
 
     try:
-        datos = scrape(driver, web_config, logger)
+        datos = scrape(driver, web_config)
     finally:
         driver.quit()
 
-    suffix: str = save_raw(datos, settings.RAW_CONFIG, logger)
+    suffix: str = save_raw(datos, settings.RAW_CONFIG)
     del datos
 
     skip_process: bool = settings.PIPELINE_CONFIG.get("skip_process", False)
@@ -83,14 +84,13 @@ def _run_full(logger: logging.Logger) -> list[dict]:
             extension=settings.RAW_CONFIG["format"],
             suffix=suffix,
             raw_config=settings.RAW_CONFIG,
-            logger=logger,
         )
 
-    cleanup_raw(settings.RAW_CONFIG, logger)
+    cleanup_raw(settings.RAW_CONFIG)
     return processed
 
 
-def _run_reprocess(suffix: str, logger: logging.Logger) -> list[dict]:
+def _run_reprocess(suffix: str) -> list[dict]:
     """Flujo reprocess: omite el scraping y reprocesa un raw existente."""
     logger.info(f"Iniciando reprocesamiento: sufijo {suffix}")
     return process(
@@ -98,15 +98,14 @@ def _run_reprocess(suffix: str, logger: logging.Logger) -> list[dict]:
         extension=settings.RAW_CONFIG["format"],
         suffix=suffix,
         raw_config=settings.RAW_CONFIG,
-        logger=logger,
     )
 
 
-def _save_output(processed: list[dict], logger: logging.Logger) -> None:
+def _save_output(processed: list[dict]) -> None:
     """Guarda los datos procesados en todos los formatos configurados."""
     output_formats = settings.STORAGE_CONFIG.get("output_formats", ["csv"])
     for formato in output_formats:
-        save_data(processed, formato, global_settings.DATA_CONFIG, settings.STORAGE_CONFIG, logger)
+        save_data(processed, formato, global_settings.DATA_CONFIG, settings.STORAGE_CONFIG)
     logger.info("Proceso finalizado")
 
 
@@ -122,15 +121,15 @@ def run(args: argparse.Namespace) -> None:
         args.reprocess (str | None): sufijo del raw a reprocesar.
                                      Si es None se ejecuta el flujo completo.
     """
-    logger = setup_logger(**global_settings.LOG_CONFIG)
+    setup_logger(_JOB_NAME, **global_settings.LOG_CONFIG)
 
     try:
         if args.reprocess:
-            processed = _run_reprocess(args.reprocess, logger)
+            processed = _run_reprocess(args.reprocess)
         else:
-            processed = _run_full(logger)
+            processed = _run_full()
 
-        _save_output(processed, logger)
+        _save_output(processed)
 
     except Exception as e:
         logger.error(f"Error durante la ejecucion: {e}", exc_info=True)

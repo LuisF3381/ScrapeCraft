@@ -162,6 +162,11 @@ LOG_CONFIG = {
     "log_folder": "log",    # Carpeta de logs (compartida entre todos los jobs)
     "level": "INFO"         # Nivel: DEBUG, INFO, WARNING, ERROR
 }
+```
+
+Cada job genera su propio archivo de log nombrado por proceso: `log/<job>_YYYYMMDD.log`. Multiples ejecuciones del mismo job en el mismo dia acumulan en el mismo archivo.
+
+```python
 
 DATA_CONFIG = {
     "csv":  {"encoding": "utf-8", "separator": ";", "index": False},
@@ -264,7 +269,7 @@ No es necesario modificar `main.py`.
 Implementa tu logica de transformacion dentro de `process()`:
 
 ```python
-def process(filename: str, extension: str, suffix: str, raw_config: dict, logger=None) -> list[dict]:
+def process(filename: str, extension: str, suffix: str, raw_config: dict) -> list[dict]:
     filepath = os.path.join(raw_config["raw_folder"], f"{filename}_{suffix}.{extension}")
     df = pd.read_csv(filepath)
 
@@ -278,16 +283,16 @@ def process(filename: str, extension: str, suffix: str, raw_config: dict, logger
 ### `src/shared/storage.py`
 
 ```python
-def save_data(datos, format, data_config, storage_config, logger=None) -> None:
+def save_data(datos, format, data_config, storage_config) -> None:
     """Guarda los datos en el formato y ubicacion especificados."""
 
-def save_raw(datos, raw_config, logger=None) -> str:
+def save_raw(datos, raw_config) -> str:
     """Guarda datos en bruto como CSV. Retorna el sufijo timestamp generado."""
 
 def load_raw(filename, extension, suffix, raw_config) -> list[dict]:
     """Lee un raw existente y lo retorna como lista de dicts sin transformar."""
 
-def cleanup_raw(raw_config, logger=None) -> None:
+def cleanup_raw(raw_config) -> None:
     """Limpia archivos raw segun la politica de retencion configurada."""
 
 def build_filepath(storage_config, format) -> str:
@@ -297,14 +302,14 @@ def build_filepath(storage_config, format) -> str:
 ### `src/<job>/scraper.py`
 
 ```python
-def scrape(driver, web_config, logger) -> list[dict]:
+def scrape(driver, web_config) -> list[dict]:
     """Extrae datos desde la URL usando los selectores del archivo de configuracion."""
 ```
 
 ### `src/<job>/process.py`
 
 ```python
-def process(filename, extension, suffix, raw_config, logger=None) -> list[dict]:
+def process(filename, extension, suffix, raw_config) -> list[dict]:
     """Lee el archivo raw y aplica transformaciones a los datos."""
 ```
 
@@ -321,7 +326,7 @@ def parse_record(item, selectors, index) -> dict:
 ### `src/<job>/app_job.py`
 
 ```python
-def load_web_config(logger=None) -> dict:
+def load_web_config() -> dict:
     """Carga la configuracion de la web desde el archivo YAML del job."""
 
 def run(args: argparse.Namespace) -> None:
