@@ -5,7 +5,10 @@ import pandas as pd
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 from src.shared.driver_config import DriverConfig
-from src.books_to_scrape.app_job import load_web_config
+from src.shared.job_runner import load_web_config as _load_web_config
+
+def load_web_config():
+    return _load_web_config("books_to_scrape")
 from src.books_to_scrape.process import process
 from src.books_to_scrape.utils import safe_get_text, safe_get_attr, parse_record
 from config.books_to_scrape import settings

@@ -3,7 +3,10 @@ import os
 import re
 from urllib.parse import urlparse
 from src.shared.driver_config import DriverConfig
-from src.viviendas_adonde.app_job import load_web_config
+from src.shared.job_runner import load_web_config as _load_web_config
+
+def load_web_config():
+    return _load_web_config("viviendas_adonde")
 from config.viviendas_adonde import settings
 
 

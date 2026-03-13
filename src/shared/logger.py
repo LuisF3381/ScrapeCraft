@@ -21,8 +21,9 @@ def setup_logger(job_name: str, log_folder: str = "log", level: str = "INFO") ->
     logger: logging.Logger = logging.getLogger("src")
     logger.setLevel(getattr(logging, level.upper()))
 
-    if logger.handlers:
-        return
+    for handler in logger.handlers[:]:
+        handler.close()
+        logger.removeHandler(handler)
 
     formatter: logging.Formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
