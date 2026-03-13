@@ -238,8 +238,8 @@ El campo `format` determina en que formato se persiste el raw intermedio. El pip
 | Modo | Comportamiento |
 |------|----------------|
 | `keep_all` | Conserva todos los archivos raw |
-| `keep_last_n` | Conserva los ultimos N archivos por fecha de modificacion |
-| `keep_days` | Conserva los archivos de los ultimos N dias |
+| `keep_last_n` | Conserva los ultimos N archivos, ordenados por timestamp en el nombre |
+| `keep_days` | Conserva los archivos cuyo timestamp en el nombre no supere N dias de antiguedad |
 
 ### Web (`config/<job>/web_config.yaml`)
 
@@ -278,13 +278,11 @@ No es necesario modificar `main.py`.
 
 ## Procesamiento (`src/<job>/process.py`)
 
-Implementa tu logica de transformacion dentro de `process()`. El raw llega con todas las columnas como `str` — convierte los tipos que necesites explicitamente:
+Implementa tu logica de transformacion dentro de `process()`. Recibe un DataFrame con todas las columnas como `str` — convierte los tipos que necesites explicitamente:
 
 ```python
-def process(filename: str, extension: str, suffix: str, raw_config: dict, data_config: dict) -> list[dict]:
-    filepath = os.path.join(raw_config["raw_folder"], f"{filename}_{suffix}.{extension}")
-    config = data_config[extension]
-    df = _read_df(filepath, extension, config)  # todas las columnas llegan como str
+def process(df: pd.DataFrame) -> list[dict]:
+    # todas las columnas llegan como str (lineamiento string-first)
 
     # --- Tu logica aqui ---
     # Convierte tipos donde sea necesario, por ejemplo:
@@ -293,12 +291,14 @@ def process(filename: str, extension: str, suffix: str, raw_config: dict, data_c
     return df.to_dict(orient="records")
 ```
 
+`app_job.py` se encarga de cargar el raw y construir el DataFrame antes de llamar a `process()`. El modulo no tiene dependencias de I/O — solo recibe datos y devuelve datos.
+
 ### Lineamiento string-first
 
 Todos los datos se persisten y se leen como `str`, sin excepcion:
 
-- **Al escribir** (`save_raw`, `save_data`): se aplica `df.astype(str)` antes de guardar
-- **Al leer** (`load_raw`, `process.py`): se usa `dtype=str` para evitar inferencia de tipos
+- **Al escribir** (`save_raw`, `save_data`): se aplica `df.astype(str).replace("nan", "")` antes de guardar — los nulos quedan como cadena vacia, no como `"nan"`
+- **Al leer** (`load_raw`): se usa `dtype=str` para evitar inferencia de tipos
 
 Esto garantiza que valores como `"001"`, `"N/A"`, `"1.500,00"` o registros danados se preserven exactamente como llegan del scraper. La conversion de tipos es responsabilidad exclusiva de `process.py`.
 
@@ -307,11 +307,13 @@ Esto garantiza que valores como `"001"`, `"N/A"`, `"1.500,00"` o registros danad
 ### `src/shared/storage.py`
 
 ```python
-def save_data(datos, format, data_config, storage_config) -> None:
-    """Guarda los datos en el formato y ubicacion especificados. Persiste todo como str."""
+def save_data(datos, format, data_config, storage_config, now=None) -> None:
+    """Guarda los datos en el formato y ubicacion especificados. Persiste todo como str (None → "").
+    now: datetime opcional; si se omite se usa datetime.now(). Pasar el mismo valor a todas las
+    llamadas de un run garantiza timestamps coherentes en modo timestamp_suffix."""
 
 def save_raw(datos, raw_config, data_config) -> str:
-    """Guarda datos en bruto en el formato de raw_config["format"]. Retorna el sufijo timestamp. Persiste todo como str."""
+    """Guarda datos en bruto en el formato de raw_config["format"]. Retorna el sufijo timestamp. Persiste todo como str (None → "")."""
 
 def load_raw(filename, extension, suffix, raw_config, data_config) -> list[dict]:
     """Lee un raw existente y lo retorna como lista de dicts sin transformar. Lee todo como str."""
@@ -319,8 +321,9 @@ def load_raw(filename, extension, suffix, raw_config, data_config) -> list[dict]
 def cleanup_raw(raw_config) -> None:
     """Limpia archivos raw segun la politica de retencion configurada."""
 
-def build_filepath(storage_config, format) -> str:
-    """Construye la ruta del archivo segun el modo de nombrado configurado."""
+def build_filepath(storage_config, format, now=None) -> str:
+    """Construye la ruta del archivo segun el modo de nombrado configurado.
+    now: datetime opcional; si se omite se usa datetime.now()."""
 ```
 
 ### `src/<job>/scraper.py`
@@ -333,8 +336,8 @@ def scrape(driver, web_config) -> list[dict]:
 ### `src/<job>/process.py`
 
 ```python
-def process(filename, extension, suffix, raw_config, data_config) -> list[dict]:
-    """Lee el archivo raw como str y aplica transformaciones y castings de tipo."""
+def process(df: pd.DataFrame) -> list[dict]:
+    """Recibe un DataFrame con columnas en str y aplica transformaciones y castings de tipo."""
 ```
 
 ### `src/<job>/utils.py`
@@ -357,8 +360,9 @@ def run(args: argparse.Namespace) -> None:
     """
     Punto de entrada del job. Interfaz estandar requerida por el dispatcher.
 
-    Flujo completo:    scrape → save_raw → process → cleanup_raw → save_data
-    Flujo reprocess:   process → save_data
+    Flujo completo:    scrape → save_raw → load_raw → process(df) → cleanup_raw → save_data
+    Sin proceso:       scrape → save_raw → load_raw → cleanup_raw → save_data
+    Flujo reprocess:   load_raw → process(df) → save_data
     """
 ```
 
@@ -391,7 +395,7 @@ def run(args: argparse.Namespace) -> None:
 | `TestDriverConfig` | `test_driver_instance_created_with_settings_file` | Test de instancia del driver |
 | `TestRawConfig` | `test_settings_has_raw_config` | Verifica RAW_CONFIG existe |
 | `TestRawConfig` | `test_raw_config_has_required_keys` | Valida claves requeridas |
-| `TestRawConfig` | `test_raw_config_format_is_csv` | Verifica formato raw es csv |
+| `TestRawConfig` | `test_raw_config_format_is_valid` | Verifica que el formato raw es uno de los soportados |
 | `TestRawConfig` | `test_raw_config_retention_mode_is_valid` | Valida modo de retencion |
 
 ## Requisitos

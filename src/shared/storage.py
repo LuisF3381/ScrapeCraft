@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def _write_df(df: pd.DataFrame, filepath: str, format: str, config: dict) -> None:
     """Escribe un DataFrame en el formato indicado usando la config correspondiente."""
-    df = df.astype(str)
+    df = df.astype(str).replace("nan", "")
     if format == "csv":
         df.to_csv(filepath, index=False, encoding=config.get("encoding", "utf-8"), sep=config.get("separator", ","))
     elif format == "json":
@@ -44,13 +44,15 @@ def _read_df(filepath: str, format: str, config: dict) -> pd.DataFrame:
 # API publica
 # ---------------------------------------------------------------------------
 
-def build_filepath(storage_config: dict, format: str) -> str:
+def build_filepath(storage_config: dict, format: str, now: datetime | None = None) -> str:
     """
     Construye la ruta del archivo segun el modo de nombrado configurado.
 
     Args:
         storage_config: Diccionario con configuracion de almacenamiento
         format: Formato de salida (csv, json, xml, xlsx)
+        now: Momento de referencia para el nombre del archivo. Si es None se usa datetime.now().
+             Pasar el mismo valor a todas las llamadas de un mismo run garantiza nombres coherentes.
 
     Returns:
         str: Ruta completa del archivo a guardar
@@ -61,7 +63,7 @@ def build_filepath(storage_config: dict, format: str) -> str:
 
     os.makedirs(output_folder, exist_ok=True)
 
-    now = datetime.now()
+    now = now or datetime.now()
     date_str: str = now.strftime("%Y%m%d")
     timestamp_str: str = now.strftime("%Y%m%d_%H%M%S")
 
@@ -81,7 +83,7 @@ def build_filepath(storage_config: dict, format: str) -> str:
     return filepath
 
 
-def save_data(datos: list[dict], format: str, data_config: dict, storage_config: dict) -> None:
+def save_data(datos: list[dict], format: str, data_config: dict, storage_config: dict, now: datetime | None = None) -> None:
     """
     Guarda los datos en el formato y ubicacion especificados.
 
@@ -90,11 +92,12 @@ def save_data(datos: list[dict], format: str, data_config: dict, storage_config:
         format:         Formato de salida (csv, json, xml, xlsx)
         data_config:    Diccionario con configuraciones de cada formato
         storage_config: Diccionario con configuracion de almacenamiento
+        now:            Momento de referencia para el nombre del archivo (ver build_filepath)
     """
     if format not in data_config:
         raise ValueError(f"Formato no soportado: {format}. Disponibles: {list(data_config.keys())}")
 
-    filepath: str = build_filepath(storage_config, format)
+    filepath: str = build_filepath(storage_config, format, now)
     _write_df(pd.DataFrame(datos), filepath, format, data_config[format])
     logger.info(f"Datos guardados en {filepath} ({len(datos)} registros)")
 
@@ -178,8 +181,18 @@ def cleanup_raw(raw_config: dict) -> None:
         files_to_delete: list[str] = files[:-value] if len(files) > value else []
     elif mode == "keep_days":
         value: int = retention["value"]
-        cutoff: float = datetime.now().timestamp() - (value * 86400)
-        files_to_delete = [f for f in files if os.path.getmtime(f) < cutoff]
+        cutoff: datetime = datetime.now() - timedelta(days=value)
+
+        def _parse_timestamp(filepath: str) -> datetime | None:
+            try:
+                stem = os.path.splitext(os.path.basename(filepath))[0]  # "viviendas_20260312_143052"
+                ts_str = "_".join(stem.split("_")[-2:])                  # "20260312_143052"
+                return datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
+            except ValueError:
+                logger.warning(f"Archivo con nombre inesperado en raw, ignorando: {os.path.basename(filepath)}")
+                return None
+
+        files_to_delete = [f for f in files if (ts := _parse_timestamp(f)) is not None and ts < cutoff]
     else:
         raise ValueError(f"Modo de retencion no soportado: {mode}")
 

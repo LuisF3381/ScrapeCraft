@@ -5,7 +5,7 @@ import os
 
 def get_available_jobs() -> list[str]:
     """Escanea src/ y retorna los jobs disponibles (carpetas con app_job.py)."""
-    src_path = os.path.join(os.path.dirname(__file__))
+    src_path = os.path.dirname(__file__)
     return [
         entry.name
         for entry in os.scandir(src_path)

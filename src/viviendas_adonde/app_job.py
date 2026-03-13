@@ -1,6 +1,8 @@
 import argparse
 import logging
+import pandas as pd
 import yaml
+from datetime import datetime
 from pathlib import Path
 from src.shared.driver_config import DriverConfig
 from src.shared.logger import setup_logger
@@ -25,6 +27,7 @@ logger = logging.getLogger(__name__)
 #   FLUJO SIN PROCESS (skip_process=True en PIPELINE_CONFIG):
 #     run() → _run_full() → scrape()
 #                         → save_raw()
+#                         → load_raw()
 #                         → cleanup_raw()
 #           → _save_output()
 #
@@ -38,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 # Se deriva automaticamente del nombre de la carpeta del job (no modificar)
 _JOB_NAME = Path(__file__).parent.name
-WEB_CONFIG_PATH = f"config/{_JOB_NAME}/web_config.yaml"
+WEB_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / _JOB_NAME / "web_config.yaml"
 
 
 def load_web_config() -> dict:
@@ -65,6 +68,9 @@ def _run_full() -> list[dict]:
     finally:
         driver.quit()
 
+    if not datos:
+        raise RuntimeError("El scraper no retorno datos. Verifica la URL, los selectores o posible bloqueo.")
+
     suffix: str = save_raw(datos, settings.RAW_CONFIG, global_settings.DATA_CONFIG)
     del datos
 
@@ -80,13 +86,14 @@ def _run_full() -> list[dict]:
             data_config=global_settings.DATA_CONFIG,
         )
     else:
-        processed = process(
+        df = pd.DataFrame(load_raw(
             filename=settings.RAW_CONFIG["filename"],
             extension=settings.RAW_CONFIG["format"],
             suffix=suffix,
             raw_config=settings.RAW_CONFIG,
             data_config=global_settings.DATA_CONFIG,
-        )
+        ))
+        processed = process(df)
 
     cleanup_raw(settings.RAW_CONFIG)
     return processed
@@ -95,20 +102,22 @@ def _run_full() -> list[dict]:
 def _run_reprocess(suffix: str) -> list[dict]:
     """Flujo reprocess: omite el scraping y reprocesa un raw existente."""
     logger.info(f"Iniciando reprocesamiento: sufijo {suffix}")
-    return process(
+    df = pd.DataFrame(load_raw(
         filename=settings.RAW_CONFIG["filename"],
         extension=settings.RAW_CONFIG["format"],
         suffix=suffix,
         raw_config=settings.RAW_CONFIG,
         data_config=global_settings.DATA_CONFIG,
-    )
+    ))
+    return process(df)
 
 
 def _save_output(processed: list[dict]) -> None:
     """Guarda los datos procesados en todos los formatos configurados."""
     output_formats = settings.STORAGE_CONFIG.get("output_formats", ["csv"])
+    now = datetime.now()
     for formato in output_formats:
-        save_data(processed, formato, global_settings.DATA_CONFIG, settings.STORAGE_CONFIG)
+        save_data(processed, formato, global_settings.DATA_CONFIG, settings.STORAGE_CONFIG, now)
     logger.info("Proceso finalizado")
 
 

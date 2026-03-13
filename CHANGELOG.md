@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.22.0] - 2026-03-13
+
+### Fixed
+- `driver_config.py`: logger cambiado de `"scrapecraft"` a `logging.getLogger(__name__)` — el logger anterior era un nodo huerfano fuera de la jerarquia `"src"`, por lo que sus mensajes se perdian silenciosamente sin llegar al archivo de log ni a la consola
+- `storage.py` `_write_df()`: `df.astype(str)` ahora incluye `.replace("nan", "")` para evitar que valores `None`/`NaN` se persistan como el string literal `"nan"`, corrompiendo los datos al releerlos
+- `storage.py` `cleanup_raw()` modo `keep_days`: reemplazado `os.path.getmtime()` por extraccion del timestamp del nombre del archivo, consistente con el comportamiento de `keep_last_n` y resistente a cambios de `mtime` por copias, backups o sincronizacion en la nube
+- `storage.py` `cleanup_raw()` `_parse_timestamp`: ahora captura `ValueError` con `try/except` si hay archivos con nombre inesperado en la carpeta raw, emite un warning y los ignora en lugar de crashear el proceso
+- `test_config.py`: `test_raw_config_format_is_csv` renombrado a `test_raw_config_format_is_valid` y corregido para validar que el formato esta en la lista de soportados (`csv | json | xml | xlsx`) en lugar de asumir siempre `"csv"`, reflejando el comportamiento real desde v0.19.0
+- `app_job.py`: comentario del flujo `skip_process=True` ahora incluye `load_raw()` que estaba omitido
+- `main.py`: eliminado `os.path.join()` redundante con un solo argumento en `get_available_jobs()`
+- `app_job.py`: `WEB_CONFIG_PATH` ahora construido con `Path` en lugar de f-string con slashes para consistencia con el resto del modulo
+- `app_job.py`: guard explicito tras `scrape()` — si el scraper retorna lista vacia lanza `RuntimeError` con mensaje descriptivo en lugar de propagar un `EmptyDataError` de pandas desde `load_raw()`
+
+### Changed
+- `process.py`: firma simplificada de `process(filename, extension, suffix, raw_config, data_config)` a `process(df: pd.DataFrame)` — la responsabilidad de cargar el raw se mueve a `app_job.py`, dejando `process.py` exclusivamente como modulo de transformacion sin logica de I/O ni imports de `storage`
+- `app_job.py` `_run_full()` y `_run_reprocess()`: ahora construyen el DataFrame con `pd.DataFrame(load_raw(...))` y lo pasan directamente a `process(df)`, eliminando el round-trip innecesario `DataFrame → list[dict] → DataFrame` que ocurria cuando `process.py` llamaba a `load_raw()` internamente
+- `storage.py` `build_filepath()` y `save_data()`: nuevo parametro opcional `now: datetime | None` — si se pasa, se usa como referencia temporal en lugar de llamar `datetime.now()` internamente
+- `app_job.py` `_save_output()`: calcula `now = datetime.now()` una sola vez y lo propaga a todas las llamadas de `save_data()`, garantizando que todos los formatos de una misma ejecucion compartan el mismo timestamp en modo `timestamp_suffix`
+
+### Architecture
+- `process.py` queda libre de dependencias de I/O: unico import externo es `pandas`. Esto permite testearlo en aislamiento pasando un DataFrame directamente, sin necesidad de archivos en disco
+- La carga del raw es ahora responsabilidad exclusiva de `app_job.py`, que ya centraliza todo el I/O del pipeline (scrape, save_raw, load_raw, cleanup_raw, save_data)
+
 ## [0.21.0] - 2026-03-12
 
 ### Changed

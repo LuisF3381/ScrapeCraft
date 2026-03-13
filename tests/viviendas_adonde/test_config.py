@@ -128,10 +128,12 @@ class TestRawConfig:
             assert key in settings.RAW_CONFIG, f"Falta '{key}' en RAW_CONFIG"
         print("[OK] RAW_CONFIG tiene todas las claves requeridas")
 
-    def test_raw_config_format_is_csv(self):
-        """Verifica que el formato raw es csv."""
-        assert settings.RAW_CONFIG["format"] == "csv", "El formato raw debe ser 'csv'"
-        print("[OK] Formato raw es csv")
+    def test_raw_config_format_is_valid(self):
+        """Verifica que el formato raw es uno de los soportados."""
+        valid_formats = ["csv", "json", "xml", "xlsx"]
+        fmt = settings.RAW_CONFIG["format"]
+        assert fmt in valid_formats, f"Formato raw invalido: '{fmt}'. Debe ser uno de {valid_formats}"
+        print(f"[OK] Formato raw valido: {fmt}")
 
     def test_raw_config_retention_mode_is_valid(self):
         """Verifica que el modo de retencion es valido."""

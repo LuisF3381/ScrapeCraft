@@ -1,31 +1,19 @@
 import logging
-import os
-from src.shared.storage import _read_df
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
 
-def process(filename: str, extension: str, suffix: str, raw_config: dict, data_config: dict) -> list[dict]:
+def process(df: pd.DataFrame) -> list[dict]:
     """
-    Lee el archivo raw y aplica transformaciones a los datos.
+    Aplica transformaciones a los datos raw y retorna el resultado procesado.
 
     Args:
-        filename:    Nombre base del archivo (ej: "viviendas")
-        extension:   Extension del archivo   (ej: "csv")
-        suffix:      Sufijo timestamp de la ejecucion (ej: "20260312_143052")
-        raw_config:  Diccionario con configuracion del raw
-        data_config: Diccionario con configuraciones de formato (DATA_CONFIG)
+        df: DataFrame con los datos raw a transformar
 
     Returns:
         list[dict]: Lista de diccionarios con los datos procesados
     """
-
-    # Lee el path del archivo raw temporal
-    filepath: str = os.path.join(raw_config["raw_folder"], f"{filename}_{suffix}.{extension}")
-    config: dict = data_config[extension]
-
-    # Lee el archivo raw en un DataFrame de pandas segun el formato configurado
-    df = _read_df(filepath, extension, config)
 
     # CODIGO IMPLEMENTA DATA ENGINEER
 
