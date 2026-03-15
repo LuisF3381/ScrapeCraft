@@ -70,26 +70,21 @@ def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime) -> 
     suffix: str = save_raw(datos, settings.RAW_CONFIG, global_settings.DATA_CONFIG, now)
     del datos
 
+    raw_records: list[dict] = load_raw(
+        filename=settings.RAW_CONFIG["filename"],
+        extension=settings.RAW_CONFIG["format"],
+        suffix=suffix,
+        raw_config=settings.RAW_CONFIG,
+        data_config=global_settings.DATA_CONFIG,
+    )
+
     skip_process: bool = settings.PIPELINE_CONFIG.get("skip_process", False)
 
     if skip_process:
         logger.info("skip_process=True: omitiendo process.py, usando raw directamente")
-        processed = load_raw(
-            filename=settings.RAW_CONFIG["filename"],
-            extension=settings.RAW_CONFIG["format"],
-            suffix=suffix,
-            raw_config=settings.RAW_CONFIG,
-            data_config=global_settings.DATA_CONFIG,
-        )
+        processed = raw_records
     else:
-        df = pd.DataFrame(load_raw(
-            filename=settings.RAW_CONFIG["filename"],
-            extension=settings.RAW_CONFIG["format"],
-            suffix=suffix,
-            raw_config=settings.RAW_CONFIG,
-            data_config=global_settings.DATA_CONFIG,
-        ))
-        processed = process_fn(df)
+        processed = process_fn(pd.DataFrame(raw_records))
 
     cleanup_raw(settings.RAW_CONFIG)
     return processed

@@ -52,13 +52,24 @@ class DriverConfig:
         if self.proxy:
             driver_kwargs['proxy'] = self.proxy
 
-        driver: Driver = Driver(**driver_kwargs)
+        try:
+            driver: Driver = Driver(**driver_kwargs)
+        except Exception as e:
+            raise RuntimeError(
+                f"No se pudo inicializar el driver de SeleniumBase: {e}\n"
+                "Verifica que Google Chrome este instalado y que el puerto no este bloqueado."
+            ) from e
+
         logger.info("Driver inicializado correctamente")
 
-        if self.window_size:
-            width, height = self.window_size
-            driver.set_window_size(width, height)
-        elif self.maximize:
-            driver.maximize_window()
+        try:
+            if self.window_size:
+                width, height = self.window_size
+                driver.set_window_size(width, height)
+            elif self.maximize:
+                driver.maximize_window()
+        except Exception as e:
+            driver.quit()
+            raise RuntimeError(f"Error al configurar la ventana del driver: {e}") from e
 
         return driver

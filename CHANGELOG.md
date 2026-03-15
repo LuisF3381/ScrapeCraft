@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.25.0] - 2026-03-14
+
+### Fixed
+- `src/shared/logger.py`: nombre del archivo de log cambiado de `<job>_YYYYMMDD.log` a `<job>_YYYYMMDD_HHMMSS.log` — con solo la fecha, multiples ejecuciones en el mismo dia mezclaban sus logs en el mismo archivo sin separacion; ahora cada ejecucion genera su propio archivo
+- `src/shared/storage.py` `_write_df()`: reemplazado `df.astype(str).replace("nan", "")` por `df.fillna("").astype(str)` — el enfoque anterior convertia primero todo a string y luego buscaba el literal `"nan"`, corrompiendo cualquier campo de texto que contuviera esa palabra; ahora los `NaN` reales se rellenan con `""` antes de convertir, preservando el string `"nan"` como dato valido
+- `src/shared/storage.py` `cleanup_raw()`: ordenacion de archivos raw cambiada de `key=lambda f: os.path.basename(f)` a una funcion `_extract_timestamp()` que extrae el sufijo `YYYYMMDD_HHMMSS` via `rsplit("_", 2)` — la ordenacion alfabetica del nombre completo era fragil si el campo `filename` contenia guiones bajos adicionales; ahora ordena cronologicamente por el timestamp del sufijo
+- `src/shared/storage.py` `cleanup_raw()`: eliminacion de archivos raw envuelta en `try/except OSError` — antes, un archivo bloqueado o sin permisos propagaba la excepcion y cancelaba la ejecucion completa aunque los datos ya se hubieran guardado; ahora emite un `WARNING` y continua con el resto de archivos
+- `src/shared/driver_config.py` `get_driver()`: inicializacion del driver envuelta en `try/except Exception` con mensaje accionable que indica verificar Chrome y el puerto; configuracion de ventana (`set_window_size` / `maximize_window`) tambien protegida con `try/except`, que llama a `driver.quit()` antes de relanzar para evitar procesos Chrome huerfanos
+
+### Changed
+- `src/shared/job_runner.py` `_run_full()`: llamada a `load_raw()` deduplicada — antes se repetia identicamente en ambas ramas del `if skip_process`, con la diferencia de que una la envolvia en `pd.DataFrame` y la otra no; ahora se llama una sola vez a `raw_records = load_raw(...)` y se bifurca solo en que hacer con los datos (`processed = raw_records` o `processed = process_fn(pd.DataFrame(raw_records))`)
+
 ## [0.24.0] - 2026-03-13
 
 ### Fixed

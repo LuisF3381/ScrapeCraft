@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def _write_df(df: pd.DataFrame, filepath: str, format: str, config: dict) -> None:
     """Escribe un DataFrame en el formato indicado usando la config correspondiente."""
-    df = df.astype(str).replace("nan", "")
+    df = df.fillna("").astype(str)
     if format == "csv":
         df.to_csv(filepath, index=False, encoding=config.get("encoding", "utf-8"), sep=config.get("separator", ","))
     elif format == "json":
@@ -170,13 +170,19 @@ def cleanup_raw(raw_config: dict) -> None:
     if not os.path.isdir(raw_folder):
         return
 
+    def _extract_timestamp(filepath: str) -> str:
+        """Extrae el sufijo YYYYMMDD_HHMMSS del nombre del archivo para ordenar cronologicamente."""
+        stem = os.path.splitext(os.path.basename(filepath))[0]
+        parts = stem.rsplit("_", 2)
+        return f"{parts[-2]}_{parts[-1]}" if len(parts) >= 3 else stem
+
     files: list[str] = sorted(
         [
             os.path.join(raw_folder, f)
             for f in os.listdir(raw_folder)
             if f.startswith(f"{filename}_") and f.endswith(f".{format}")
         ],
-        key=lambda f: os.path.basename(f)
+        key=_extract_timestamp
     )
 
     if mode == "keep_last_n":
@@ -200,5 +206,8 @@ def cleanup_raw(raw_config: dict) -> None:
         raise ValueError(f"Modo de retencion no soportado: {mode}")
 
     for filepath in files_to_delete:
-        os.remove(filepath)
-        logger.info(f"Raw eliminado: {filepath}")
+        try:
+            os.remove(filepath)
+            logger.info(f"Raw eliminado: {filepath}")
+        except OSError as e:
+            logger.warning(f"No se pudo eliminar el raw {filepath}: {e}")

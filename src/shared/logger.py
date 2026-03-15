@@ -16,7 +16,7 @@ def setup_logger(job_name: str, log_folder: str = "log", level: str = "INFO") ->
     """
     os.makedirs(log_folder, exist_ok=True)
 
-    log_file: str = os.path.join(log_folder, f"{job_name}_{datetime.now():%Y%m%d}.log")
+    log_file: str = os.path.join(log_folder, f"{job_name}_{datetime.now():%Y%m%d_%H%M%S}.log")
 
     logger: logging.Logger = logging.getLogger("src")
     logger.setLevel(getattr(logging, level.upper()))

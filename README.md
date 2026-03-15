@@ -185,7 +185,7 @@ LOG_CONFIG = {
 }
 ```
 
-Cada job genera su propio archivo de log nombrado por proceso: `log/<job>_YYYYMMDD.log`. Multiples ejecuciones del mismo job en el mismo dia acumulan en el mismo archivo.
+Cada ejecucion genera su propio archivo de log: `log/<job>_YYYYMMDD_HHMMSS.log`. El timestamp completo garantiza que multiples ejecuciones del mismo dia no mezclen sus logs.
 
 ```python
 DATA_CONFIG = {
@@ -331,7 +331,7 @@ def process(df: pd.DataFrame) -> list[dict]:
 
 Todos los datos se persisten y se leen como `str`, sin excepcion:
 
-- **Al escribir** (`save_raw`, `save_data`): se aplica `df.astype(str).replace("nan", "")` antes de guardar — los nulos quedan como cadena vacia, no como `"nan"`
+- **Al escribir** (`save_raw`, `save_data`): se aplica `df.fillna("").astype(str)` antes de guardar — los `NaN` reales se rellenan con `""` antes de convertir a string, preservando el literal `"nan"` como dato valido en campos de texto
 - **Al leer** (`load_raw`): se usa `dtype=str` para evitar inferencia de tipos
 
 Esto garantiza que valores como `"001"`, `"N/A"`, `"1.500,00"` o registros danados se preserven exactamente como llegan del scraper. La conversion de tipos es responsabilidad exclusiva de `process.py`.
