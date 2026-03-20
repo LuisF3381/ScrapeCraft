@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.28.0] - 2026-03-19
+
+### Added
+- `src/shared/job_runner.py` `_save_last_params()`: persiste el dict de params en `config/<job>/last_params.json` cada vez que se pasa `--params` por CLI
+- `src/shared/job_runner.py` `_load_last_params()`: carga los params del archivo persistido si existe; retorna dict vacio si no existe aun
+- `config/<job>/last_params.json`: archivo generado automaticamente por el sistema al usar `--params` por primera vez en un job; no requiere creacion manual
+
+### Changed
+- `src/shared/job_runner.py` `run()`: logica de resolucion de params — si se pasa `--params` se parsea y se persiste; si no se pasa se cargan los de la ultima ejecucion; permite ejecutar el job repetidas veces sin reescribir los params y cambiarlos solo cuando sea necesario
+
+### CLI
+```bash
+# Primera vez: define y guarda los params
+python -m src.main --job books_to_scrape --params "categoria=mystery&pagina=2"
+
+# Siguientes ejecuciones: recuerda los params anteriores automaticamente
+python -m src.main --job books_to_scrape
+python -m src.main --job books_to_scrape
+
+# Cuando cambien: pisa los params guardados
+python -m src.main --job books_to_scrape --params "categoria=romance&pagina=1"
+```
+
+## [0.27.0] - 2026-03-19
+
+### Added
+- `src/main.py`: nuevo argumento CLI `--params` — acepta un string en formato `"clave=valor&clave2=valor2"` que se parsea a dict y se propaga al scraper del job indicado; opcional y retrocompatible (jobs sin params siguen funcionando sin cambios)
+- `src/shared/job_runner.py` `_parse_params()`: nueva funcion que convierte el string de `--params` en `dict` usando `split("=", 1)` para cada par separado por `&`; retorna dict vacio si `--params` no se paso; lanza `ValueError` con mensaje descriptivo si el formato es invalido
+- `src/books_to_scrape/scraper.py` y `src/viviendas_adonde/scraper.py`: firma actualizada de `scrape(driver, web_config)` a `scrape(driver, web_config, params=None)` — el scraper recibe el dict de parametros y puede usarlos para filtrar URLs, ajustar selectores o cualquier logica dependiente del contexto
+
+### Changed
+- `src/shared/job_runner.py` `_run_full()`: nuevo parametro `params: dict` que se propaga a `scrape_fn(driver, web_config, params)`; si `params` no esta vacio se registra en el log al inicio de la ejecucion
+- `src/shared/job_runner.py` `run()`: parsea `args.params` con `_parse_params()` antes de llamar al flujo correspondiente; en modo `--reprocess` los params se ignoran (el scraper no se ejecuta)
+
+### CLI
+```bash
+# Sin parametros (comportamiento anterior)
+python -m src.main --job viviendas_adonde
+
+# Con parametros
+python -m src.main --job viviendas_adonde --params "fecha=01/12/2024&pais=peru"
+python -m src.main --job books_to_scrape --params "categoria=mystery&pagina=2"
+```
+
+### Architecture
+- `params` es exclusivo del scraper: `process()` no los recibe porque opera sobre el DataFrame ya construido; si el scraper necesita anotar el contexto de ejecucion en los datos, puede incluirlos como campo en cada registro
+- Los parametros son siempre `str`: la conversion de tipos es responsabilidad del scraper que los consume, consistente con el lineamiento string-first del proyecto
+- `&` y `=` son caracteres reservados del formato y no pueden aparecer en valores
+
 ## [0.26.0] - 2026-03-19
 
 ### Fixed

@@ -7,17 +7,19 @@ from src.viviendas_adonde.utils import parse_record
 logger = logging.getLogger(__name__)
 
 
-def scrape(driver: Driver, web_config: dict) -> list[dict]:
+def scrape(driver: Driver, web_config: dict, params: dict = None) -> list[dict]:
     """
     Extrae datos desde la URL usando los selectores del archivo de configuracion.
 
     Args:
         driver:     Instancia del driver de SeleniumBase
         web_config: Diccionario con url, xpath_selectors y waits
+        params:     Parametros opcionales pasados por CLI (ej: {"fecha": "01/12/2024", "pais": "peru"})
 
     Returns:
         list[dict]: Lista de diccionarios con los datos extraidos
     """
+    params = params or {}
     url: str = web_config["url"]
     selectors: dict = web_config["xpath_selectors"]
     waits: dict = web_config["waits"]

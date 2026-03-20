@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import pandas as pd
 import yaml
@@ -52,15 +53,61 @@ def load_web_config(job_name: str) -> dict:
 # Flujos internos
 # ---------------------------------------------------------------------------
 
-def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime) -> list[dict]:
+_LAST_PARAMS_FILENAME = "last_params.json"
+
+
+def _parse_params(raw: str | None) -> dict:
+    """
+    Convierte el string de parametros CLI en un diccionario.
+
+    Args:
+        raw: String en formato "clave=valor&clave2=valor2", o None si no se paso --params
+
+    Returns:
+        dict con los parametros, o dict vacio si raw es None
+
+    Raises:
+        ValueError: Si algun par no tiene el formato "clave=valor"
+    """
+    if not raw:
+        return {}
+    try:
+        return dict(p.split("=", 1) for p in raw.split("&"))
+    except ValueError:
+        raise ValueError(
+            f"Formato de --params invalido: '{raw}'. "
+            'Usa el formato "clave=valor&clave2=valor2"'
+        )
+
+
+def _save_last_params(job_name: str, params: dict) -> None:
+    """Persiste los params en config/<job>/last_params.json para reutilizarlos en la proxima ejecucion."""
+    path = _PROJECT_ROOT / "config" / job_name / _LAST_PARAMS_FILENAME
+    path.write_text(json.dumps(params, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info(f"Params guardados en {path}")
+
+
+def _load_last_params(job_name: str) -> dict:
+    """Carga los params persistidos de la ultima ejecucion. Retorna dict vacio si no existen."""
+    path = _PROJECT_ROOT / "config" / job_name / _LAST_PARAMS_FILENAME
+    if not path.exists():
+        return {}
+    params = json.loads(path.read_text(encoding="utf-8"))
+    logger.info(f"Params cargados de ejecucion anterior: {params}")
+    return params
+
+
+def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime, params: dict) -> list[dict]:
     """Flujo completo: scraping → raw → (proceso opcional) → limpieza de raw."""
     logger.info("Iniciando scraper...")
+    if params:
+        logger.info(f"Parametros recibidos: {params}")
 
     web_config = load_web_config(job_name)
     driver = DriverConfig(**settings.DRIVER_CONFIG).get_driver()
 
     try:
-        datos = scrape_fn(driver, web_config)
+        datos = scrape_fn(driver, web_config, params)
     finally:
         driver.quit()
 
@@ -132,11 +179,17 @@ def run(args: argparse.Namespace, scrape_fn, process_fn, settings, job_name: str
 
     now = datetime.now()
 
+    if args.params:
+        params = _parse_params(args.params)
+        _save_last_params(job_name, params)
+    else:
+        params = _load_last_params(job_name)
+
     try:
         if args.reprocess:
             processed = _run_reprocess(args.reprocess, process_fn, settings)
         else:
-            processed = _run_full(scrape_fn, process_fn, settings, job_name, now)
+            processed = _run_full(scrape_fn, process_fn, settings, job_name, now, params)
 
         _save_output(processed, settings, now)
 

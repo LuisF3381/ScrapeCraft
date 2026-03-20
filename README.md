@@ -123,6 +123,10 @@ python -m src.main --list
 python -m src.main --job viviendas_adonde
 python -m src.main --job books_to_scrape
 
+# Ejecutar con parametros para el scraper
+python -m src.main --job viviendas_adonde --params "fecha=01/12/2024&pais=peru"
+python -m src.main --job books_to_scrape --params "categoria=mystery&pagina=2"
+
 # Reprocesar sin volver a scrapear (usa un raw existente)
 python -m src.main --job viviendas_adonde --reprocess 20260312_143052
 python -m src.main --job books_to_scrape --reprocess 20260313_142546
@@ -156,6 +160,48 @@ scrape() → save_raw() → del datos → cleanup_raw() → save_data()
 ```
 
 Util cuando la web ya devuelve datos normalizados y no se requiere transformacion. Se activa con `PIPELINE_CONFIG["skip_process"] = True` en `settings.py`.
+
+### Parametros para el scraper (`--params`)
+
+Permite pasar valores dinamicos al scraper sin tocar el codigo ni la configuracion:
+
+```bash
+python -m src.main --job viviendas_adonde --params "fecha=01/12/2024&pais=peru"
+```
+
+El string se parsea a un dict y llega al scraper como el argumento `params`:
+
+```python
+def scrape(driver, web_config, params):
+    fecha = params.get("fecha")   # "01/12/2024"
+    pais  = params.get("pais")    # "peru"
+    # Usar para construir la URL, filtrar elementos, ajustar selectores, etc.
+```
+
+**Reglas del formato:**
+- Separador de pares: `&`
+- Separador de clave y valor: `=`
+- `&` y `=` son caracteres reservados y no pueden aparecer en los valores
+- Todos los valores llegan como `str` — convierte el tipo dentro del scraper si es necesario
+- En modo `--reprocess` los params se ignoran (el scraper no se ejecuta)
+
+**Persistencia de params entre ejecuciones:**
+
+Cada vez que se pasa `--params`, el sistema los guarda en `config/<job>/last_params.json`. Si en la siguiente ejecucion no se pasa `--params`, se cargan automaticamente los de la ultima vez:
+
+```bash
+# Define y guarda los params
+python -m src.main --job viviendas_adonde --params "fecha=01/12/2024&pais=peru"
+
+# Las siguientes ejecuciones los recuerdan sin escribirlos
+python -m src.main --job viviendas_adonde
+python -m src.main --job viviendas_adonde
+
+# Para cambiarlos, vuelve a pasar --params
+python -m src.main --job viviendas_adonde --params "fecha=15/12/2024&pais=argentina"
+```
+
+Cada job tiene su propio `last_params.json` independiente.
 
 ### Reprocesamiento
 
@@ -392,8 +438,12 @@ def safe_get_attr(element, xpath, attr, fallback="") -> str:
 ### `src/<job>/scraper.py`
 
 ```python
-def scrape(driver, web_config) -> list[dict]:
-    """Extrae datos desde la URL usando los selectores del archivo de configuracion."""
+def scrape(driver, web_config, params: dict = None) -> list[dict]:
+    """
+    Extrae datos desde la URL usando los selectores del archivo de configuracion.
+    params: dict con los parametros pasados via --params en CLI (vacio si no se paso ninguno).
+    Los valores son siempre str — convierte tipos dentro del scraper si es necesario.
+    """
 ```
 
 ### `src/<job>/process.py`

@@ -26,6 +26,12 @@ def main() -> None:
         help="Reprocesar raw existente indicando su sufijo (ej: 20260312_143052)"
     )
     parser.add_argument(
+        "--params",
+        metavar="PARAMS",
+        default=None,
+        help='Parametros para el scraper en formato "clave=valor&clave2=valor2" (ej: "fecha=01/12/2024&pais=peru")'
+    )
+    parser.add_argument(
         "--list",
         action="store_true",
         help="Listar los jobs disponibles"
