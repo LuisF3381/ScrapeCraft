@@ -4,11 +4,11 @@ import re
 import pandas as pd
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
-from src.shared.driver_config import DriverConfig
+from src.shared.driver_config import create_driver
 from src.shared.job_runner import load_web_config as _load_web_config
 from src.books_to_scrape.process import process
 from src.books_to_scrape.utils import safe_get_text, safe_get_attr, parse_record
-from config.books_to_scrape import settings
+from src.books_to_scrape import settings
 
 
 def load_web_config():
@@ -20,8 +20,8 @@ class TestWebConfig:
 
     def test_web_config_file_exists(self):
         """Verifica que existe el archivo web_config.yaml."""
-        assert os.path.exists("config/books_to_scrape/web_config.yaml"), "No existe config/books_to_scrape/web_config.yaml"
-        print("[OK] config/books_to_scrape/web_config.yaml existe")
+        assert os.path.exists("src/books_to_scrape/web_config.yaml"), "No existe src/books_to_scrape/web_config.yaml"
+        print("[OK] src/books_to_scrape/web_config.yaml existe")
 
     def test_web_config_has_required_keys(self):
         """Verifica que el YAML tiene las claves requeridas."""
@@ -131,8 +131,7 @@ class TestDriverConfig:
         test_config = settings.DRIVER_CONFIG.copy()
         test_config['headless'] = True
 
-        driver_config = DriverConfig(**test_config)
-        driver = driver_config.get_driver()
+        driver = create_driver(test_config)
 
         try:
             assert driver is not None

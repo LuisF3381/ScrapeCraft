@@ -1,5 +1,5 @@
 """
-Configuracion especifica del job viviendas_adonde.
+Configuracion especifica del job books_to_scrape.
 Para configuracion global (logs, formatos) ver config/global_settings.py
 """
 
@@ -11,21 +11,20 @@ DRIVER_CONFIG = {
     # Modo headless: Ejecutar sin interfaz gráfica (útil para producción/servidores)
     "headless": False,
 
-    # Undetected mode: Activar undetected-chromedriver para evadir detección
-    "undetected": True,
+    # Undetected mode: books.toscrape.com es un sitio de practica sin anti-bot
+    "undetected": False,
 
     # Maximizar ventana: Maximizar automáticamente la ventana del navegador
     "maximize": True,
 
     # Tamaño de ventana: Tupla (ancho, alto) para tamaño específico
-    # Si se define, tiene prioridad sobre maximize
-    "window_size": None,  # Ejemplo: (1920, 1080)
+    "window_size": None,
 
     # User agent: User agent personalizado para simular diferentes navegadores
-    "user_agent": None,  # Ejemplo: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)..."
+    "user_agent": None,
 
     # Proxy: Servidor proxy en formato "ip:puerto"
-    "proxy": None  # Ejemplo: "123.45.67.89:8080"
+    "proxy": None
 }
 
 # ============================================
@@ -34,16 +33,16 @@ DRIVER_CONFIG = {
 
 STORAGE_CONFIG = {
     # Carpeta de salida (relativa a la raíz del proyecto)
-    "output_folder": "output/viviendas_adonde",
+    "output_folder": "output/books_to_scrape",
 
     # Nombre base del archivo (sin extensión)
-    "filename": "viviendas",
+    "filename": "books",
 
     # Modo de nombrado del archivo:
-    # - "overwrite": Sobrescribe el archivo (viviendas.csv)
-    # - "date_suffix": Añade fecha al nombre (viviendas_20260130.csv)
-    # - "timestamp_suffix": Añade fecha y hora (viviendas_20260130_143052.csv)
-    # - "date_folder": Crea subcarpeta con fecha (20260130/viviendas.csv)
+    # - "overwrite": Sobrescribe el archivo (books.csv)
+    # - "date_suffix": Añade fecha al nombre (books_20260130.csv)
+    # - "timestamp_suffix": Añade fecha y hora (books_20260130_143052.csv)
+    # - "date_folder": Crea subcarpeta con fecha (20260130/books.csv)
     "naming_mode": "date_suffix",
 
     # Formatos de salida: lista de formatos a exportar
@@ -55,11 +54,8 @@ STORAGE_CONFIG = {
 # CONFIGURACIÓN DEL PIPELINE
 # ============================================
 
-PIPELINE_CONFIG = {
-    # skip_process: Si es True, omite el paso de process.py y guarda el raw directamente.
-    # Util cuando la web ya devuelve datos normalizados y no se requiere transformacion.
-    "skip_process": False
-}
+# Si es True, omite el paso de process.py y guarda el raw directamente.
+SKIP_PROCESS = False
 
 # ============================================
 # CONFIGURACIÓN DE RAW (datos en bruto)
@@ -67,13 +63,12 @@ PIPELINE_CONFIG = {
 
 RAW_CONFIG = {
     # Carpeta donde se guardan los archivos raw
-    "raw_folder": "raw/viviendas_adonde",
+    "raw_folder": "raw/books_to_scrape",
 
     # Nombre base del archivo raw (sin extension ni sufijo)
-    "filename": "viviendas",
+    "filename": "books",
 
     # Formato del archivo raw: csv | json | xml | xlsx
-    # Usa automaticamente la configuracion de DATA_CONFIG[format]
     "format": "csv",
 
     # Politica de retencion de archivos raw:

@@ -15,6 +15,9 @@ output/*
 !output/.gitkeep
 downloaded_files/
 
+# Estado de ejecucion (params persistidos entre runs)
+.state/
+
 # Logs
 log/*
 !log/.gitkeep

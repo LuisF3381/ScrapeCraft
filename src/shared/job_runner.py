@@ -5,7 +5,7 @@ import pandas as pd
 import yaml
 from datetime import datetime
 from pathlib import Path
-from src.shared.driver_config import DriverConfig
+from src.shared.driver_config import create_driver
 from src.shared.logger import setup_logger
 from src.shared.storage import save_data, save_raw, cleanup_raw, load_raw
 from config import global_settings
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 #                         → cleanup_raw()
 #           → _save_output()
 #
-#   FLUJO SIN PROCESS (skip_process=True en PIPELINE_CONFIG):
+#   FLUJO SIN PROCESS (SKIP_PROCESS=True en settings.py):
 #     run() → _run_full() → scrape()
 #                         → save_raw()
 #                         → load_raw()
@@ -42,7 +42,7 @@ _PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 def load_web_config(job_name: str) -> dict:
     """Carga la configuracion de la web desde el archivo YAML del job."""
-    path = _PROJECT_ROOT / "config" / job_name / "web_config.yaml"
+    path = _PROJECT_ROOT / "src" / job_name / "web_config.yaml"
     with open(path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     logger.info(f"Configuracion cargada: {config['url']}")
@@ -52,9 +52,6 @@ def load_web_config(job_name: str) -> dict:
 # ---------------------------------------------------------------------------
 # Flujos internos
 # ---------------------------------------------------------------------------
-
-_LAST_PARAMS_FILENAME = "last_params.json"
-
 
 def _parse_params(raw: str | None) -> dict:
     """
@@ -81,15 +78,16 @@ def _parse_params(raw: str | None) -> dict:
 
 
 def _save_last_params(job_name: str, params: dict) -> None:
-    """Persiste los params en config/<job>/last_params.json para reutilizarlos en la proxima ejecucion."""
-    path = _PROJECT_ROOT / "config" / job_name / _LAST_PARAMS_FILENAME
+    """Persiste los params en .state/<job>_params.json para reutilizarlos en la proxima ejecucion."""
+    path = _PROJECT_ROOT / ".state" / f"{job_name}_params.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(params, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info(f"Params guardados en {path}")
 
 
 def _load_last_params(job_name: str) -> dict:
     """Carga los params persistidos de la ultima ejecucion. Retorna dict vacio si no existen."""
-    path = _PROJECT_ROOT / "config" / job_name / _LAST_PARAMS_FILENAME
+    path = _PROJECT_ROOT / ".state" / f"{job_name}_params.json"
     if not path.exists():
         return {}
     params = json.loads(path.read_text(encoding="utf-8"))
@@ -104,7 +102,7 @@ def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime, par
         logger.info(f"Parametros recibidos: {params}")
 
     web_config = load_web_config(job_name)
-    driver = DriverConfig(**settings.DRIVER_CONFIG).get_driver()
+    driver = create_driver(settings.DRIVER_CONFIG)
 
     try:
         datos = scrape_fn(driver, web_config, params)
@@ -118,14 +116,12 @@ def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime, par
     del datos
 
     raw_records: list[dict] = load_raw(
-        filename=settings.RAW_CONFIG["filename"],
-        extension=settings.RAW_CONFIG["format"],
         suffix=suffix,
         raw_config=settings.RAW_CONFIG,
         data_config=global_settings.DATA_CONFIG,
     )
 
-    skip_process: bool = settings.PIPELINE_CONFIG.get("skip_process", False)
+    skip_process: bool = settings.SKIP_PROCESS
 
     if skip_process:
         logger.info("skip_process=True: omitiendo process.py, usando raw directamente")
@@ -141,8 +137,6 @@ def _run_reprocess(suffix: str, process_fn, settings) -> list[dict]:
     """Flujo reprocess: omite el scraping y reprocesa un raw existente."""
     logger.info(f"Iniciando reprocesamiento: sufijo {suffix}")
     df = pd.DataFrame(load_raw(
-        filename=settings.RAW_CONFIG["filename"],
-        extension=settings.RAW_CONFIG["format"],
         suffix=suffix,
         raw_config=settings.RAW_CONFIG,
         data_config=global_settings.DATA_CONFIG,

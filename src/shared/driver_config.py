@@ -4,72 +4,47 @@ from seleniumbase import Driver
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class DriverConfig:
-    """Configuracion para inicializar el driver de SeleniumBase con opciones personalizables."""
+def create_driver(config: dict) -> Driver:
+    """
+    Crea y retorna un driver de SeleniumBase configurado.
 
-    def __init__(
-        self,
-        headless: bool = False,
-        undetected: bool = True,
-        maximize: bool = True,
-        window_size: tuple[int, int] | None = None,
-        user_agent: str | None = None,
-        proxy: str | None = None
-    ) -> None:
-        """
-        Inicializa la configuracion del driver.
+    Args:
+        config: Diccionario con las opciones del driver (headless, undetected, maximize,
+                window_size, user_agent, proxy)
 
-        Args:
-            headless: Ejecutar en modo sin interfaz grafica. Default: False
-            undetected: Activar undetected-chromedriver para evadir deteccion. Default: True
-            maximize: Maximizar la ventana del navegador. Default: True
-            window_size: Tupla (ancho, alto) para establecer tamano especifico. Default: None
-            user_agent: User agent personalizado. Default: None
-            proxy: Servidor proxy en formato "ip:puerto". Default: None
-        """
-        self.headless: bool = headless
-        self.undetected: bool = undetected
-        self.maximize: bool = maximize
-        self.window_size: tuple[int, int] | None = window_size
-        self.user_agent: str | None = user_agent
-        self.proxy: str | None = proxy
+    Returns:
+        Driver: Instancia del driver de SeleniumBase configurada.
+    """
+    driver_kwargs: dict = {
+        "uc": config.get("undetected", True),
+        "headless": config.get("headless", False),
+    }
 
-    def get_driver(self) -> Driver:
-        """
-        Crea y retorna un driver de SeleniumBase configurado con las opciones especificadas.
+    if config.get("user_agent"):
+        driver_kwargs["user_agent"] = config["user_agent"]
 
-        Returns:
-            Driver: Instancia del driver de SeleniumBase configurada.
-        """
-        driver_kwargs: dict = {
-            'uc': self.undetected,
-            'headless': self.headless
-        }
+    if config.get("proxy"):
+        driver_kwargs["proxy"] = config["proxy"]
 
-        if self.user_agent:
-            driver_kwargs['user_agent'] = self.user_agent
+    try:
+        driver: Driver = Driver(**driver_kwargs)
+    except Exception as e:
+        raise RuntimeError(
+            f"No se pudo inicializar el driver de SeleniumBase: {e}\n"
+            "Verifica que Google Chrome este instalado y que el puerto no este bloqueado."
+        ) from e
 
-        if self.proxy:
-            driver_kwargs['proxy'] = self.proxy
+    logger.info("Driver inicializado correctamente")
 
-        try:
-            driver: Driver = Driver(**driver_kwargs)
-        except Exception as e:
-            raise RuntimeError(
-                f"No se pudo inicializar el driver de SeleniumBase: {e}\n"
-                "Verifica que Google Chrome este instalado y que el puerto no este bloqueado."
-            ) from e
+    try:
+        window_size = config.get("window_size")
+        if window_size:
+            width, height = window_size
+            driver.set_window_size(width, height)
+        elif config.get("maximize", True):
+            driver.maximize_window()
+    except Exception as e:
+        driver.quit()
+        raise RuntimeError(f"Error al configurar la ventana del driver: {e}") from e
 
-        logger.info("Driver inicializado correctamente")
-
-        try:
-            if self.window_size:
-                width, height = self.window_size
-                driver.set_window_size(width, height)
-            elif self.maximize:
-                driver.maximize_window()
-        except Exception as e:
-            driver.quit()
-            raise RuntimeError(f"Error al configurar la ventana del driver: {e}") from e
-
-        return driver
+    return driver

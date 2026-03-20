@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.32.0] - 2026-03-19
+
+### Changed
+- Estructura: `settings.py` y `web_config.yaml` de cada job movidos de `config/<job>/` a `src/<job>/` — cada job es ahora completamente autocontenido; `config/` queda exclusivamente con `global_settings.py` y `pipelines/`
+- `src/shared/job_runner.py` `load_web_config()`: ruta actualizada de `config/<job>/web_config.yaml` a `src/<job>/web_config.yaml`
+- `src/<job>/app_job.py`: import de settings actualizado de `from config.<job> import settings` a `from src.<job> import settings`
+- Estado en runtime (`last_params`): los archivos de params persistidos se mueven de `config/<job>/last_params.json` a `.state/<job>_params.json`; `.state/` esta en `.gitignore` y se crea automaticamente si no existe — el directorio `config/` queda libre de archivos generados en runtime
+- Tests renombrados: `tests/<job>/test_config.py` → `tests/<job>/test_<job>.py` para que el nombre refleje el job que se testea (`test_books_to_scrape.py`, `test_viviendas_adonde.py`)
+
+### Removed
+- `src/__pycache__/`: archivos `.pyc` huerfanos de una estructura anterior eliminados
+
+## [0.31.0] - 2026-03-19
+
+### Changed
+- `src/shared/storage.py` `load_raw()`: firma simplificada — eliminados parametros `filename` y `extension` que ya estaban disponibles dentro de `raw_config`; nueva firma: `load_raw(suffix, raw_config, data_config)`
+- `src/shared/driver_config.py`: clase `DriverConfig` reemplazada por funcion `create_driver(config: dict) -> Driver` — la clase se instanciaba exclusivamente para llamar `.get_driver()` de inmediato y nunca se reutilizaba; la funcion directa elimina el patron `DriverConfig(**config).get_driver()`
+- `src/shared/storage.py`: modulo unificado a `pathlib.Path`; eliminados todos los usos de `os.path`, `os.makedirs`, `os.listdir`, `os.remove` y `os.path.isdir`
+- `src/shared/storage.py` `build_filepath()`: eliminado `os.makedirs` como efecto secundario — una funcion que construye rutas no debe crear directorios; los directorios se crean ahora en `save_data()` y `save_raw()` inmediatamente antes de escribir; tipo de retorno cambiado de `str` a `Path`
+- `config/<job>/settings.py` `PIPELINE_CONFIG`: dict de una sola clave reemplazado por variable directa `SKIP_PROCESS: bool`; acceso simplificado de `settings.PIPELINE_CONFIG.get("skip_process", False)` a `settings.SKIP_PROCESS`
+
+### Refactor
+- `src/shared/storage.py` `_parse_raw_timestamp()`: extraida de funcion anidada dentro de `cleanup_raw()` a funcion privada a nivel de modulo; mismo comportamiento, mas legible y testeable de forma independiente
+
 ## [0.30.0] - 2026-03-19
 
 ### Added

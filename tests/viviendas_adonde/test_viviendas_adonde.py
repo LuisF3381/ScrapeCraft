@@ -2,9 +2,9 @@ import pytest
 import os
 import re
 from urllib.parse import urlparse
-from src.shared.driver_config import DriverConfig
+from src.shared.driver_config import create_driver
 from src.shared.job_runner import load_web_config as _load_web_config
-from config.viviendas_adonde import settings
+from src.viviendas_adonde import settings
 
 
 def load_web_config():
@@ -16,8 +16,8 @@ class TestWebConfig:
 
     def test_web_config_file_exists(self):
         """Verifica que existe el archivo web_config.yaml."""
-        assert os.path.exists("config/viviendas_adonde/web_config.yaml"), "No existe config/viviendas_adonde/web_config.yaml"
-        print("[OK] config/viviendas_adonde/web_config.yaml existe")
+        assert os.path.exists("src/viviendas_adonde/web_config.yaml"), "No existe src/viviendas_adonde/web_config.yaml"
+        print("[OK] src/viviendas_adonde/web_config.yaml existe")
 
     def test_web_config_has_required_keys(self):
         """Verifica que el YAML tiene las claves requeridas."""
@@ -106,8 +106,7 @@ class TestDriverConfig:
         test_config = settings.DRIVER_CONFIG.copy()
         test_config['headless'] = True
 
-        driver_config = DriverConfig(**test_config)
-        driver = driver_config.get_driver()
+        driver = create_driver(test_config)
 
         try:
             assert driver is not None

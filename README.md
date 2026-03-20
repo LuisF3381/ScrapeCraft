@@ -17,35 +17,38 @@ ScrapeCraft/
 ├── src/
 │   ├── main.py                        # Dispatcher: lanza el job indicado por CLI
 │   ├── shared/                        # Modulos reutilizables entre todos los jobs
-│   │   ├── driver_config.py           # Configuracion del driver
+│   │   ├── driver_config.py           # Inicializacion del driver (create_driver)
 │   │   ├── job_runner.py              # Orquestacion ETL generica
 │   │   ├── logger.py                  # Sistema de logging
 │   │   ├── storage.py                 # Almacenamiento y exportacion
 │   │   └── utils.py                   # Funciones auxiliares de extraccion
 │   ├── viviendas_adonde/              # Job: portal de alquiler de inmuebles
+│   │   ├── settings.py                # Config del job: DRIVER, STORAGE, RAW, SKIP_PROCESS
+│   │   ├── web_config.yaml            # URL, selectores XPath y waits
 │   │   ├── scraper.py
 │   │   ├── process.py
 │   │   ├── utils.py
 │   │   └── app_job.py
 │   └── books_to_scrape/               # Job: catalogo de libros (sitio de practica)
+│       ├── settings.py
+│       ├── web_config.yaml
 │       ├── scraper.py
 │       ├── process.py
 │       ├── utils.py
 │       └── app_job.py
 ├── config/
 │   ├── global_settings.py             # Config global: LOG_CONFIG, DATA_CONFIG
-│   ├── viviendas_adonde/
-│   │   ├── settings.py
-│   │   └── web_config.yaml
-│   └── books_to_scrape/
-│       ├── settings.py
-│       └── web_config.yaml
+│   └── pipelines/
+│       └── diario.yaml                # Ejemplo de pipeline multi-job
+├── .state/                            # Estado de ejecucion (gitignored)
+│   ├── books_to_scrape_params.json    # Params persistidos del ultimo run
+│   └── viviendas_adonde_params.json
 ├── tests/
 │   ├── test_global.py                 # Tests de configuracion global
 │   ├── viviendas_adonde/
-│   │   └── test_config.py
+│   │   └── test_viviendas_adonde.py
 │   └── books_to_scrape/
-│       └── test_config.py
+│       └── test_books_to_scrape.py
 ├── log/                               # Logs de ejecucion (compartido)
 ├── output/
 │   ├── viviendas_adonde/
@@ -69,7 +72,7 @@ main.py (Dispatcher CLI)
                         │
                         └── shared/job_runner.run()     # Orquestacion ETL generica
                                 │
-                                ├── load_web_config()   # Carga config/<job>/web_config.yaml
+                                ├── load_web_config()   # Carga src/<job>/web_config.yaml
                                 │
                                 ├── shared/driver_config.py
                                 │   └── DriverConfig    # Inicializa el browser
@@ -92,7 +95,7 @@ main.py (Dispatcher CLI)
 |--------|-----------------|
 | `job_runner.py` | Orquestacion ETL generica: `_run_full`, `_run_reprocess`, `_save_output`, `run` |
 | `storage.py` | Persistencia: raw, cleanup, construir rutas, exportar en multiples formatos |
-| `driver_config.py` | Inicializacion del navegador con opciones anti-deteccion |
+| `driver_config.py` | `create_driver(config)`: inicializa el navegador con opciones anti-deteccion |
 | `logger.py` | Sistema de logging dual (archivo + consola) |
 | `utils.py` | Funciones auxiliares de extraccion reutilizables: `safe_get_text`, `safe_get_attr` |
 
@@ -142,12 +145,12 @@ ScrapeCraft soporta cuatro modos de ejecucion que son mutuamente excluyentes:
 
 | Modo | Comando | Params |
 |------|---------|--------|
-| Job individual | `--job nombre` | `--params` o `last_params.json` |
-| Subset especifico | `--jobs job1,job2,...` | `last_params.json` de cada job |
-| Todos los jobs | `--all` | `last_params.json` de cada job |
+| Job individual | `--job nombre` | `--params` o `.state/<job>_params.json` |
+| Subset especifico | `--jobs job1,job2,...` | `.state/<job>_params.json` de cada job |
+| Todos los jobs | `--all` | `.state/<job>_params.json` de cada job |
 | Pipeline YAML | `--pipeline ruta.yaml` | Campo `params` del YAML |
 
-`--reprocess` y `--params` solo son compatibles con `--job`. En modos de serie, cada job resuelve sus params automaticamente desde su `last_params.json`.
+`--reprocess` y `--params` solo son compatibles con `--job`. En modos de serie, cada job resuelve sus params automaticamente desde su archivo en `.state/`.
 
 ### Pipeline YAML
 
@@ -167,7 +170,7 @@ jobs:
 python -m src.main --pipeline config/pipelines/diario.yaml
 ```
 
-Los params del YAML se pasan al scraper de cada job y se persisten en su `last_params.json`. Si un job no tiene `params` en el YAML, carga su `last_params.json` como en modo normal.
+Los params del YAML se pasan al scraper de cada job y se persisten en `.state/<job>_params.json`. Si un job no tiene `params` en el YAML, carga su archivo de params en `.state/` como en modo normal.
 
 ### Comportamiento ante fallos en serie
 
@@ -203,7 +206,7 @@ scrape() → save_raw() → del datos → process() → cleanup_raw() → save_d
 scrape() → save_raw() → del datos → cleanup_raw() → save_data()
 ```
 
-Util cuando la web ya devuelve datos normalizados y no se requiere transformacion. Se activa con `PIPELINE_CONFIG["skip_process"] = True` en `settings.py`.
+Util cuando la web ya devuelve datos normalizados y no se requiere transformacion. Se activa con `SKIP_PROCESS = True` en `settings.py`.
 
 ### Parametros para el scraper (`--params`)
 
@@ -231,7 +234,7 @@ def scrape(driver, web_config, params):
 
 **Persistencia de params entre ejecuciones:**
 
-Cada vez que se pasa `--params`, el sistema los guarda en `config/<job>/last_params.json`. Si en la siguiente ejecucion no se pasa `--params`, se cargan automaticamente los de la ultima vez:
+Cada vez que se pasa `--params`, el sistema los guarda en `.state/<job>_params.json`. Si en la siguiente ejecucion no se pasa `--params`, se cargan automaticamente los de la ultima vez:
 
 ```bash
 # Define y guarda los params
@@ -245,7 +248,7 @@ python -m src.main --job viviendas_adonde
 python -m src.main --job viviendas_adonde --params "fecha=15/12/2024&pais=argentina"
 ```
 
-Cada job tiene su propio `last_params.json` independiente.
+Cada job tiene su propio archivo de params independiente en `.state/`. El directorio esta en `.gitignore` — los params no se versionan.
 
 ### Reprocesamiento
 
@@ -288,9 +291,9 @@ DATA_CONFIG = {
 
 `DATA_CONFIG` es la unica fuente de verdad para los parametros de cada formato. Se aplica tanto al output final (`save_data`) como al raw intermedio (`save_raw`, `load_raw`, `process.py`).
 
-### Por job (`config/<job>/settings.py`)
+### Por job (`src/<job>/settings.py`)
 
-Especifica del job. Contiene `DRIVER_CONFIG`, `STORAGE_CONFIG` y `RAW_CONFIG`.
+Especifica del job. Contiene `DRIVER_CONFIG`, `STORAGE_CONFIG`, `RAW_CONFIG` y `SKIP_PROCESS`.
 
 ```python
 DRIVER_CONFIG = {
@@ -319,9 +322,7 @@ RAW_CONFIG = {
     }
 }
 
-PIPELINE_CONFIG = {
-    "skip_process": False   # True: omite process.py y guarda el raw directamente
-}
+SKIP_PROCESS = False   # True: omite process.py y guarda el raw directamente
 ```
 
 #### Modos de nombrado (`naming_mode`)
@@ -352,7 +353,7 @@ El campo `format` determina en que formato se persiste el raw intermedio. El pip
 | `keep_last_n` | Conserva los ultimos N archivos, ordenados por timestamp en el nombre |
 | `keep_days` | Conserva los archivos cuyo timestamp en el nombre no supere N dias de antiguedad |
 
-### Web (`config/<job>/web_config.yaml`)
+### Web (`src/<job>/web_config.yaml`)
 
 ```yaml
 url: "https://ejemplo.com"
@@ -375,7 +376,7 @@ waits:
 from pathlib import Path
 from src.<nombre>.scraper import scrape
 from src.<nombre>.process import process
-from config.<nombre> import settings
+from src.<nombre> import settings
 from src.shared.job_runner import run as _run_job
 
 _JOB_NAME = Path(__file__).parent.name
@@ -387,8 +388,8 @@ def run(args):
 2. Crear `src/<nombre>/scraper.py` con la logica de extraccion
 3. Crear `src/<nombre>/utils.py` con `parse_record()` (importa `safe_get_text`/`safe_get_attr` desde `src.shared.utils`)
 4. Crear `src/<nombre>/process.py` con la logica de transformacion
-5. Crear `config/<nombre>/settings.py` con `DRIVER_CONFIG`, `STORAGE_CONFIG`, `RAW_CONFIG` y `PIPELINE_CONFIG`
-6. Crear `config/<nombre>/web_config.yaml` con la URL y los selectores
+5. Crear `src/<nombre>/settings.py` con `DRIVER_CONFIG`, `STORAGE_CONFIG`, `RAW_CONFIG` y `SKIP_PROCESS`
+6. Crear `src/<nombre>/web_config.yaml` con la URL y los selectores
 
 Las carpetas `output/<nombre>/` y `raw/<nombre>/` se crean automaticamente en la primera ejecucion. No es necesario modificar `main.py` ni ningun otro modulo del framework.
 
@@ -433,7 +434,7 @@ Esto garantiza que valores como `"001"`, `"N/A"`, `"1.500,00"` o registros danad
 
 ```python
 def load_web_config(job_name: str) -> dict:
-    """Carga la configuracion de la web desde config/<job_name>/web_config.yaml."""
+    """Carga la configuracion de la web desde src/<job_name>/web_config.yaml."""
 
 def run(args, scrape_fn, process_fn, settings, job_name: str) -> None:
     """
@@ -458,13 +459,13 @@ def save_raw(datos, raw_config, data_config, now=None) -> str:
     now: datetime opcional; si se omite se usa datetime.now(). Pasar el mismo valor que a save_data()
     garantiza coherencia de timestamps entre raw y output."""
 
-def load_raw(filename, extension, suffix, raw_config, data_config) -> list[dict]:
+def load_raw(suffix, raw_config, data_config) -> list[dict]:
     """Lee un raw existente y lo retorna como lista de dicts sin transformar. Lee todo como str."""
 
 def cleanup_raw(raw_config) -> None:
     """Limpia archivos raw segun la politica de retencion configurada."""
 
-def build_filepath(storage_config, format, now=None) -> str:
+def build_filepath(storage_config, format, now=None) -> Path:
     """Construye la ruta del archivo segun el modo de nombrado configurado.
     now: datetime opcional; si se omite se usa datetime.now()."""
 ```
@@ -527,7 +528,7 @@ def run(args: argparse.Namespace) -> None:
 | `TestDataConfig` | `test_global_settings_has_data_config` | Verifica DATA_CONFIG con al menos un formato |
 | `TestDataConfig` | `test_data_config_formats_have_required_keys` | Valida que cada formato tiene configuracion |
 
-### `tests/viviendas_adonde/test_config.py`
+### `tests/viviendas_adonde/test_viviendas_adonde.py`
 
 | Clase | Test | Descripcion |
 |-------|------|-------------|
@@ -547,7 +548,7 @@ def run(args: argparse.Namespace) -> None:
 | `TestRawConfig` | `test_raw_config_format_is_valid` | Verifica que el formato raw es uno de los soportados |
 | `TestRawConfig` | `test_raw_config_retention_mode_is_valid` | Valida modo de retencion |
 
-### `tests/books_to_scrape/test_config.py`
+### `tests/books_to_scrape/test_books_to_scrape.py`
 
 | Clase | Test | Descripcion |
 |-------|------|-------------|
