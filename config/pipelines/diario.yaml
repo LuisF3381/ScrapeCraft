@@ -1,0 +1,18 @@
+# =============================================================================
+# Pipeline de ejemplo: ejecucion diaria
+#
+# Ejecutar con:
+#   python -m src.main --pipeline config/pipelines/diario.yaml
+#
+# Campos por job:
+#   name   (obligatorio): nombre del job (carpeta en src/)
+#   params (opcional):    parametros en formato "clave=valor&clave2=valor2"
+#                         Si se omite, el job usa su last_params.json si existe.
+# =============================================================================
+
+jobs:
+  - name: books_to_scrape
+    params: "categoria=mystery&pagina=1"
+
+  - name: viviendas_adonde
+    params: "pais=peru"

@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.30.0] - 2026-03-19
+
+### Added
+- `src/main.py`: tres nuevos modos de ejecucion en serie que coexisten con `--job`:
+  - `--jobs job1,job2,...`: ejecuta una lista de jobs especificos separados por coma
+  - `--all`: descubre y ejecuta todos los jobs disponibles en `src/` en orden alfabetico
+  - `--pipeline config/pipelines/mi_pipeline.yaml`: ejecuta un pipeline nombrado definido en YAML con params opcionales por job
+- `src/main.py` `_run_series()`: funcion interna que itera la lista de jobs, ejecuta cada uno con sus params, captura errores por job sin abortar la serie y muestra un resumen final (`Serie finalizada: N/N jobs exitosos`)
+- `src/main.py` `_make_args()`: construye el `Namespace` de args para cada job individual dentro de una serie, desacoplando el contexto de ejecucion de la serie del contexto de cada job
+- `src/main.py` `_load_job_module()`: centraliza la importacion dinamica del modulo `app_job` con mensaje de error descriptivo; elimina la duplicacion que existia entre el flujo de `--job` y el nuevo flujo de series
+- `src/main.py` `_load_pipeline()`: carga y valida un YAML de pipeline; valida existencia del archivo, presencia de clave `jobs` y campo `name` por job; retorna lista de entradas normalizadas
+- `config/pipelines/diario.yaml`: pipeline de ejemplo con ambos jobs y sus params; sirve como plantilla para crear pipelines propios
+
+### Changed
+- `src/main.py`: los cuatro modos (`--job`, `--jobs`, `--all`, `--pipeline`) son mutuamente excluyentes via `add_mutually_exclusive_group()`; `--reprocess` y `--params` se validan explicitamente y solo se aceptan junto a `--job`
+- `src/main.py`: en modo `--jobs` y `--all` cada job carga automaticamente su propio `last_params.json`; en modo `--pipeline` los params del YAML se pasan directamente al job y se persisten en `last_params.json` para ejecuciones futuras
+
+### CLI
+```bash
+# Job individual (sin cambios)
+python -m src.main --job books_to_scrape
+python -m src.main --job books_to_scrape --params "categoria=mystery"
+python -m src.main --job books_to_scrape --reprocess 20260319_202702
+
+# Subset especifico en serie
+python -m src.main --jobs books_to_scrape,viviendas_adonde
+
+# Todos los jobs en serie
+python -m src.main --all
+
+# Pipeline nombrado con params por job
+python -m src.main --pipeline config/pipelines/diario.yaml
+```
+
+### Architecture
+- `--params` no esta soportado con `--jobs`, `--all` ni `--pipeline` — en series cada job resuelve sus params desde `last_params.json`; en pipelines los params se definen en el YAML por job
+- Un job que falla en una serie no detiene los siguientes; el error se registra y la ejecucion continua
+- El YAML de pipeline es la unica fuente que puede sobreescribir `last_params.json` durante una ejecucion en serie
+
 ## [0.29.0] - 2026-03-19
 
 ### Fixed

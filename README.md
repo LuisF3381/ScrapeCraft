@@ -119,27 +119,71 @@ pip install -r requirements.txt
 # Ver los jobs disponibles
 python -m src.main --list
 
-# Ejecutar un job completo (scraping + procesamiento + guardado)
+# --- Job individual ---
 python -m src.main --job viviendas_adonde
-python -m src.main --job books_to_scrape
-
-# Ejecutar con parametros para el scraper
-python -m src.main --job viviendas_adonde --params "fecha=01/12/2024&pais=peru"
 python -m src.main --job books_to_scrape --params "categoria=mystery&pagina=2"
-
-# Reprocesar sin volver a scrapear (usa un raw existente)
-python -m src.main --job viviendas_adonde --reprocess 20260312_143052
 python -m src.main --job books_to_scrape --reprocess 20260313_142546
 
-# Ejecutar todos los tests
+# --- Ejecucion en serie ---
+python -m src.main --jobs books_to_scrape,viviendas_adonde   # subset especifico
+python -m src.main --all                                      # todos los jobs
+python -m src.main --pipeline config/pipelines/diario.yaml   # pipeline con params por job
+
+# --- Tests ---
 pytest tests/ -v
-
-# Ejecutar solo tests globales
 pytest tests/test_global.py -v
-
-# Ejecutar tests de un job especifico
-pytest tests/viviendas_adonde/ -v
 pytest tests/books_to_scrape/ -v
+pytest tests/viviendas_adonde/ -v
+```
+
+## Ejecucion en serie
+
+ScrapeCraft soporta cuatro modos de ejecucion que son mutuamente excluyentes:
+
+| Modo | Comando | Params |
+|------|---------|--------|
+| Job individual | `--job nombre` | `--params` o `last_params.json` |
+| Subset especifico | `--jobs job1,job2,...` | `last_params.json` de cada job |
+| Todos los jobs | `--all` | `last_params.json` de cada job |
+| Pipeline YAML | `--pipeline ruta.yaml` | Campo `params` del YAML |
+
+`--reprocess` y `--params` solo son compatibles con `--job`. En modos de serie, cada job resuelve sus params automaticamente desde su `last_params.json`.
+
+### Pipeline YAML
+
+Permite definir pipelines nombrados y reutilizables con params independientes por job:
+
+```yaml
+# config/pipelines/diario.yaml
+jobs:
+  - name: books_to_scrape
+    params: "categoria=mystery&pagina=1"   # opcional
+
+  - name: viviendas_adonde
+    params: "pais=peru"
+```
+
+```bash
+python -m src.main --pipeline config/pipelines/diario.yaml
+```
+
+Los params del YAML se pasan al scraper de cada job y se persisten en su `last_params.json`. Si un job no tiene `params` en el YAML, carga su `last_params.json` como en modo normal.
+
+### Comportamiento ante fallos en serie
+
+Si un job falla, el error se registra y la ejecucion continua con el siguiente. Al finalizar se muestra un resumen:
+
+```
+==================================================
+Serie finalizada: 2/2 jobs exitosos
+```
+
+o en caso de error parcial:
+
+```
+==================================================
+Serie finalizada: 1/2 jobs exitosos
+Jobs con error: viviendas_adonde
 ```
 
 ### Flujo completo (`skip_process=False`)
