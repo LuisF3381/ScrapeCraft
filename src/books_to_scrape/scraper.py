@@ -13,7 +13,7 @@ def scrape(driver: Driver, web_config: dict, params: dict = None) -> list[dict]:
 
     Args:
         driver:     Instancia del driver de SeleniumBase
-        web_config: Diccionario con url, xpath_selectors y waits
+        web_config: Diccionario con url, selectors y waits
         params:     Parametros opcionales pasados por CLI (ej: {"categoria": "mystery"})
 
     Returns:
@@ -21,7 +21,7 @@ def scrape(driver: Driver, web_config: dict, params: dict = None) -> list[dict]:
     """
     params = params or {}
     url: str = web_config["url"]
-    selectors: dict = web_config["xpath_selectors"]
+    selectors: dict = web_config["selectors"]
     waits: dict = web_config["waits"]
 
     # --- Navegacion y carga de pagina ---

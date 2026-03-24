@@ -4,13 +4,13 @@
 url: "http://books.toscrape.com/"
 
 # =============================================================================
-# Selectores XPath
+# Selectores — se usan XPath en este job.
 #
-# - container: OBLIGATORIO. XPath absoluto al elemento que se repite una vez
+# - container: OBLIGATORIO. Selector absoluto al elemento que se repite una vez
 #              por registro (ej: la tarjeta de un producto, un anuncio, etc.).
 #              Es la palabra reservada del sistema — no renombrar.
 #
-# - Resto de campos: XPath relativo al container (deben empezar con .//).
+# - Resto de campos: Selector relativo al container.
 #                    El nombre del campo se convierte en columna en el output.
 #                    Si el elemento no existe en un registro, se guarda "".
 #
@@ -19,7 +19,7 @@ url: "http://books.toscrape.com/"
 #   - Precio:  texto del elemento, incluye simbolo de libra (ej: "£51.77")
 #   - Rating:  se extrae del atributo @class del <p> (ej: "star-rating Three")
 # =============================================================================
-xpath_selectors:
+selectors:
   container: '//article[contains(@class,"product_pod")]'
   Titulo:    './/h3/a'
   Precio:    './/p[@class="price_color"]'

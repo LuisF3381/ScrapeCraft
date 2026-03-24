@@ -4,23 +4,23 @@
 url: "https://www.adondevivir.com/inmuebles-en-alquiler.html"
 
 # =============================================================================
-# Selectores XPath
+# Selectores — se usan XPath en este job.
 #
-# - container: OBLIGATORIO. XPath absoluto al elemento que se repite una vez
+# - container: OBLIGATORIO. Selector absoluto al elemento que se repite una vez
 #              por registro (ej: la tarjeta de un producto, un anuncio, etc.).
 #              Es la palabra reservada del sistema — no renombrar.
 #
-# - Resto de campos: XPath relativo al container (deben empezar con .//).
+# - Resto de campos: Selector relativo al container.
 #                    El nombre del campo se convierte en columna en el output.
 #                    Si el elemento no existe en un registro, se guarda "".
 #
-# Sintaxis rapida:
+# Sintaxis rapida (XPath):
 #   //tag[@attr="valor"]          → busca en toda la pagina (solo para container)
 #   .//tag[@attr="valor"]         → busca dentro del container (campos)
 #   .//tag[@data-qa="valor"]      → atributo data-*
 #   .//tag[contains(@class,"x")]  → clase parcial
 # =============================================================================
-xpath_selectors:
+selectors:
   container: '//div[@class="postingCard-module__posting-container"]'
   Precio: './/div[@class="postingPrices-module__price"]'
   Direccion: './/span[@class="postingLocations-module__location-address postingLocations-module__location-address-in-listing"]'

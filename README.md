@@ -24,7 +24,7 @@ ScrapeCraft/
 │   │   └── utils.py                   # Funciones auxiliares de extraccion
 │   ├── viviendas_adonde/              # Job: portal de alquiler de inmuebles
 │   │   ├── settings.py                # Config del job: DRIVER, STORAGE, RAW, SKIP_PROCESS
-│   │   ├── web_config.yaml            # URL, selectores XPath y waits
+│   │   ├── web_config.yaml            # URL, selectores y waits
 │   │   ├── scraper.py
 │   │   ├── process.py
 │   │   └── utils.py
@@ -318,7 +318,8 @@ El campo `format` determina en que formato se persiste el raw intermedio. El pip
 ```yaml
 url: "https://ejemplo.com"
 
-xpath_selectors:
+# Selectores — indica el tipo usado (XPath o CSS) en un comentario.
+selectors:
   container: '//div[@class="item"]'
   Campo1: './/span[@class="dato1"]'
   Campo2: './/span[@class="dato2"]'
@@ -488,7 +489,7 @@ Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no
 | `TestWebConfig` | `test_web_config_file_exists` | Verifica existencia del YAML |
 | `TestWebConfig` | `test_web_config_has_required_keys` | Valida claves requeridas |
 | `TestWebConfig` | `test_url_format_is_valid` | Valida formato URL |
-| `TestWebConfig` | `test_xpath_selectors_format` | Valida formato XPath de todos los selectores |
+| `TestWebConfig` | `test_selectors_format` | Valida que cada selector es una cadena no vacia (XPath o CSS) |
 | `TestWebConfig` | `test_waits_are_positive_numbers` | Valida waits numericos |
 | `TestStorageConfig` | `test_settings_has_storage_config` | Verifica STORAGE_CONFIG existe |
 | `TestStorageConfig` | `test_storage_config_has_required_keys` | Valida claves requeridas |
@@ -508,8 +509,8 @@ Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no
 | `TestWebConfig` | `test_web_config_file_exists` | Verifica existencia del YAML |
 | `TestWebConfig` | `test_web_config_has_required_keys` | Valida claves requeridas |
 | `TestWebConfig` | `test_url_format_is_valid` | Valida formato URL |
-| `TestWebConfig` | `test_xpath_selectors_format` | Valida formato XPath de todos los selectores |
-| `TestWebConfig` | `test_xpath_selectors_has_expected_fields` | Verifica campos Titulo, Precio y Rating |
+| `TestWebConfig` | `test_selectors_format` | Valida que cada selector es una cadena no vacia (XPath o CSS) |
+| `TestWebConfig` | `test_selectors_has_expected_fields` | Verifica campos Titulo, Precio y Rating |
 | `TestWebConfig` | `test_waits_are_positive_numbers` | Valida waits numericos |
 | `TestStorageConfig` | `test_settings_has_storage_config` | Verifica STORAGE_CONFIG existe |
 | `TestStorageConfig` | `test_storage_config_has_required_keys` | Valida claves requeridas |

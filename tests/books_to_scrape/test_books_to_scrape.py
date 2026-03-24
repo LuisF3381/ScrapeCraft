@@ -23,7 +23,7 @@ class TestWebConfig:
         """Verifica que el YAML tiene las claves requeridas."""
         web_config = load_web_config()
         assert "url" in web_config, "Falta 'url' en web_config.yaml"
-        assert "xpath_selectors" in web_config, "Falta 'xpath_selectors' en web_config.yaml"
+        assert "selectors" in web_config, "Falta 'selectors' en web_config.yaml"
         assert "waits" in web_config, "Falta 'waits' en web_config.yaml"
         print("[OK] web_config.yaml tiene todas las claves requeridas")
 
@@ -36,20 +36,23 @@ class TestWebConfig:
         assert parsed.netloc, f"URL no tiene dominio válido: {url}"
         print(f"[OK] URL válida: {url}")
 
-    def test_xpath_selectors_format(self):
-        """Verifica que los selectores XPath tienen formato válido."""
+    def test_selectors_format(self):
+        """Verifica que los selectores tienen formato válido (XPath o CSS)."""
         web_config = load_web_config()
-        selectors = web_config["xpath_selectors"]
+        selectors = web_config["selectors"]
         xpath_pattern = re.compile(r"^(\.?//|/)")
 
-        for name, xpath in selectors.items():
-            assert xpath_pattern.match(xpath), f"XPath inválido para '{name}': {xpath} (debe empezar con / o // o .//)"
-            print(f"[OK] XPath válido para '{name}'")
+        for name, value in selectors.items():
+            assert isinstance(value, str) and value.strip(), f"Selector vacío o inválido para '{name}'"
+            if xpath_pattern.match(value):
+                print(f"[OK] Selector XPath válido para '{name}'")
+            else:
+                print(f"[OK] Selector CSS para '{name}': {value}")
 
-    def test_xpath_selectors_has_expected_fields(self):
+    def test_selectors_has_expected_fields(self):
         """Verifica que existen los selectores de los campos configurados."""
         web_config = load_web_config()
-        selectors = web_config["xpath_selectors"]
+        selectors = web_config["selectors"]
         expected_fields = ["Titulo", "Precio", "Rating"]
         for field in expected_fields:
             assert field in selectors, f"Falta selector para el campo '{field}'"

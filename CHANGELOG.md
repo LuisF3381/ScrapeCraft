@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.39.0] - 2026-03-24
+
+### Changed
+- `src/books_to_scrape/web_config.yaml`, `src/viviendas_adonde/web_config.yaml`: renombrada clave `xpath_selectors` → `selectors` — el nombre anterior asumia XPath; la clave ahora es neutral para soportar XPath o CSS segun el job; el tipo usado se documenta en un comentario dentro del propio YAML
+- `src/books_to_scrape/scraper.py`, `src/viviendas_adonde/scraper.py`: actualizada clave `web_config["xpath_selectors"]` → `web_config["selectors"]` y docstring correspondiente
+- `tests/books_to_scrape/test_books_to_scrape.py` `TestWebConfig`: renombrado `test_xpath_selectors_format` → `test_selectors_format`; la validacion ya no fuerza patron XPath — si el selector empieza con `/` o `./` se reporta como XPath valido, de lo contrario se acepta como CSS siempre que sea una cadena no vacia
+- `tests/viviendas_adonde/test_viviendas_adonde.py` `TestWebConfig`: idem anterior
+- `tests/books_to_scrape/test_books_to_scrape.py` `TestWebConfig`: renombrado `test_xpath_selectors_has_expected_fields` → `test_selectors_has_expected_fields`; actualizada clave a `selectors`
+- `README.md`: actualizados arbol de estructura, ejemplo de `web_config.yaml` y tablas de tests para reflejar el renombre
+
 ## [0.38.0] - 2026-03-24
 
 ### Changed
