@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.38.0] - 2026-03-24
+
+### Changed
+- `tests/books_to_scrape/test_books_to_scrape.py` `TestWebConfig`: eliminado `test_xpath_selectors_has_container` — el selector `container` es opcional; cada job decide si lo usa
+- `tests/viviendas_adonde/test_viviendas_adonde.py` `TestWebConfig`: eliminado `assert "container" in selectors` de `test_xpath_selectors_format` por la misma razon
+
+### Removed
+- `tests/books_to_scrape/test_books_to_scrape.py`: eliminadas clases `TestProcess` y `TestUtils` junto a sus imports (`pd`, `MagicMock`, `process`, `safe_get_text`, `safe_get_attr`, `parse_record`) — estos tests son especificos del job de ejemplo y no forman parte del contrato del framework
+
+### Added
+- `tests/test_pipelines.py`: nuevo archivo con `TestPipelineYAML` — valida automaticamente todos los `.yaml` en `config/pipelines/` sin necesidad de actualizarlo al agregar nuevos pipelines:
+  - `test_at_least_one_pipeline_exists`: existe al menos un pipeline en `config/pipelines/`
+  - `test_pipelines_have_jobs_list`: `jobs` existe, es lista y no esta vacia
+  - `test_pipeline_jobs_have_name`: cada job tiene `name` como string no vacio
+  - `test_pipeline_job_names_exist_in_src`: los nombres de job corresponden a jobs reales en `src/`
+  - `test_pipeline_params_are_dicts_if_present`: `params` es dict nativo YAML, no string
+  - `test_pipeline_enabled_is_bool_if_present`: `enabled` es `true` o `false`
+  - `test_pipeline_metadata_types_if_present`: `name` y `description` del pipeline son strings
+
+## [0.37.0] - 2026-03-24
+
+### Removed
+- `config/pipelines/*.yaml`: eliminado el campo `reprocess` por job — el reprocesamiento es una operacion manual puntual (re-correr `process.py` tras corregir logica) y no debe automatizarse en un pipeline; queda exclusivo del CLI con `--job --reprocess <sufijo>`
+- `src/main.py` `_make_args()`: eliminado parametro `reprocess` — siempre es `None` en el contexto de pipeline; el valor real de `--reprocess` solo existe en el `args` del flujo `--job`
+- `src/main.py` `_run_series()`: eliminada extraccion de `reprocess` del entry del pipeline
+- `src/main.py` `_load_pipeline()`: eliminada lectura del campo `reprocess` por job y su inclusion en las entradas
+
+### CLI
+```bash
+# --reprocess exclusivo de --job (operacion manual)
+python -m src.main --job books_to_scrape --reprocess 20260323_142546
+
+# --pipeline nunca reprocesa, siempre scrapea
+python -m src.main --pipeline config/pipelines/diario.yaml
+```
+
+## [0.36.0] - 2026-03-24
+
+### Removed
+- `src/main.py`: eliminados `--jobs` y `--all` — ambos modos corrían jobs en serie sin soporte de params, `enabled` ni `reprocess` por job; son redundantes con `--pipeline` (que cubre todos esos casos) y creaban una API de segunda clase; el CLI queda con dos modos ortogonales: `--job` para un job individual y `--pipeline` para ejecución en serie con control total
+- `src/main.py` `_make_args()`: eliminados `jobs` y `all` del `Namespace` — ya no se usan en ningún flujo
+
+### Changed
+- `src/main.py`: mensaje de error del parser actualizado de `--job, --jobs, --all o --pipeline` a `--job o --pipeline`
+
+### CLI
+```
+# Antes (eliminado)
+python -m src.main --jobs books_to_scrape,viviendas_adonde
+python -m src.main --all
+
+# Ahora: usar --pipeline con un YAML (incluso sin params es más explícito)
+python -m src.main --pipeline config/pipelines/diario.yaml
+```
+
 ## [0.35.0] - 2026-03-23
 
 ### Removed

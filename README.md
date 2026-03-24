@@ -121,9 +121,7 @@ python -m src.main --job viviendas_adonde
 python -m src.main --job books_to_scrape --reprocess 20260313_142546
 
 # --- Ejecucion en serie ---
-python -m src.main --jobs books_to_scrape,viviendas_adonde   # subset especifico
-python -m src.main --all                                      # todos los jobs
-python -m src.main --pipeline config/pipelines/diario.yaml   # pipeline con params por job
+python -m src.main --pipeline config/pipelines/diario.yaml
 
 # --- Tests ---
 pytest tests/ -v
@@ -134,16 +132,14 @@ pytest tests/viviendas_adonde/ -v
 
 ## Ejecucion en serie
 
-ScrapeCraft soporta cuatro modos de ejecucion que son mutuamente excluyentes:
+ScrapeCraft tiene dos modos de ejecucion mutuamente excluyentes:
 
-| Modo | Comando | Params |
-|------|---------|--------|
-| Job individual | `--job nombre` | Sin params (usa `--reprocess` si necesitas reprocesar) |
-| Subset especifico | `--jobs job1,job2,...` | Sin params |
-| Todos los jobs | `--all` | Sin params |
-| Pipeline YAML | `--pipeline ruta.yaml` | Campo `params` nativo YAML por job |
+| Modo | Comando | Uso |
+|------|---------|-----|
+| Job individual | `--job nombre` | Un job, con `--reprocess` opcional |
+| Pipeline YAML | `--pipeline ruta.yaml` | Uno o mas jobs con params y `enabled` por job |
 
-Para pasar params a un job, usa siempre `--pipeline`. `--reprocess` solo es compatible con `--job`.
+Para correr multiples jobs o pasar params, usa siempre `--pipeline`. El reprocesamiento (`--reprocess`) es una operacion manual exclusiva de `--job`.
 
 ### Pipeline YAML
 
@@ -170,9 +166,6 @@ jobs:
   # - name: otro_job
   #   enabled: false
 
-  # Reprocesar raw existente sin volver a scrapear:
-  # - name: books_to_scrape
-  #   reprocess: "20260323_142546"
 ```
 
 ```bash
@@ -474,6 +467,20 @@ def parse_record(item, selectors, index) -> dict:
 | `TestDataConfig` | `test_global_settings_has_data_config` | Verifica DATA_CONFIG con al menos un formato |
 | `TestDataConfig` | `test_data_config_formats_have_required_keys` | Valida que cada formato tiene configuracion |
 
+### `tests/test_pipelines.py`
+
+Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no requiere actualizacion al agregar nuevos pipelines.
+
+| Clase | Test | Descripcion |
+|-------|------|-------------|
+| `TestPipelineYAML` | `test_at_least_one_pipeline_exists` | Existe al menos un pipeline en `config/pipelines/` |
+| `TestPipelineYAML` | `test_pipelines_have_jobs_list` | `jobs` existe, es lista y no esta vacia |
+| `TestPipelineYAML` | `test_pipeline_jobs_have_name` | Cada job tiene `name` como string no vacio |
+| `TestPipelineYAML` | `test_pipeline_job_names_exist_in_src` | Los nombres de job corresponden a jobs reales en `src/` |
+| `TestPipelineYAML` | `test_pipeline_params_are_dicts_if_present` | `params` es dict nativo YAML, no string |
+| `TestPipelineYAML` | `test_pipeline_enabled_is_bool_if_present` | `enabled` es `true` o `false` |
+| `TestPipelineYAML` | `test_pipeline_metadata_types_if_present` | `name` y `description` del pipeline son strings |
+
 ### `tests/viviendas_adonde/test_viviendas_adonde.py`
 
 | Clase | Test | Descripcion |
@@ -481,7 +488,7 @@ def parse_record(item, selectors, index) -> dict:
 | `TestWebConfig` | `test_web_config_file_exists` | Verifica existencia del YAML |
 | `TestWebConfig` | `test_web_config_has_required_keys` | Valida claves requeridas |
 | `TestWebConfig` | `test_url_format_is_valid` | Valida formato URL |
-| `TestWebConfig` | `test_xpath_selectors_format` | Valida formato XPath |
+| `TestWebConfig` | `test_xpath_selectors_format` | Valida formato XPath de todos los selectores |
 | `TestWebConfig` | `test_waits_are_positive_numbers` | Valida waits numericos |
 | `TestStorageConfig` | `test_settings_has_storage_config` | Verifica STORAGE_CONFIG existe |
 | `TestStorageConfig` | `test_storage_config_has_required_keys` | Valida claves requeridas |
@@ -501,7 +508,6 @@ def parse_record(item, selectors, index) -> dict:
 | `TestWebConfig` | `test_web_config_file_exists` | Verifica existencia del YAML |
 | `TestWebConfig` | `test_web_config_has_required_keys` | Valida claves requeridas |
 | `TestWebConfig` | `test_url_format_is_valid` | Valida formato URL |
-| `TestWebConfig` | `test_xpath_selectors_has_container` | Verifica selector container obligatorio |
 | `TestWebConfig` | `test_xpath_selectors_format` | Valida formato XPath de todos los selectores |
 | `TestWebConfig` | `test_xpath_selectors_has_expected_fields` | Verifica campos Titulo, Precio y Rating |
 | `TestWebConfig` | `test_waits_are_positive_numbers` | Valida waits numericos |
@@ -516,16 +522,6 @@ def parse_record(item, selectors, index) -> dict:
 | `TestRawConfig` | `test_raw_config_has_required_keys` | Valida claves requeridas |
 | `TestRawConfig` | `test_raw_config_format_is_valid` | Verifica que el formato raw es uno de los soportados |
 | `TestRawConfig` | `test_raw_config_retention_mode_is_valid` | Valida modo de retencion |
-| `TestProcess` | `test_process_returns_list_of_dicts` | Verifica el tipo de retorno |
-| `TestProcess` | `test_process_precio_gbp_conversion` | Valida conversion de "£51.77" a 51.77 |
-| `TestProcess` | `test_process_rating_numerico_conversion` | Valida mapeo de "star-rating X" a entero 1-5 |
-| `TestProcess` | `test_process_precio_empty_returns_none` | Precio vacio produce None en Precio_GBP |
-| `TestProcess` | `test_process_preserves_all_records` | process() no descarta ni duplica registros |
-| `TestUtils` | `test_safe_get_text_returns_text` | safe_get_text devuelve texto limpio |
-| `TestUtils` | `test_safe_get_text_fallback_on_missing` | safe_get_text retorna fallback si no existe |
-| `TestUtils` | `test_safe_get_attr_returns_attribute` | safe_get_attr devuelve el atributo HTML |
-| `TestUtils` | `test_safe_get_attr_fallback_on_missing` | safe_get_attr retorna fallback si no existe |
-| `TestUtils` | `test_parse_record_includes_numero` | parse_record incluye Numero y omite container |
 
 ## Requisitos
 

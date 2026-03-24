@@ -1,13 +1,9 @@
 import pytest
 import os
 import re
-import pandas as pd
-from unittest.mock import MagicMock
 from urllib.parse import urlparse
 from src.shared.driver_config import create_driver
 from src.shared.job_runner import load_web_config as _load_web_config
-from src.books_to_scrape.process import process
-from src.books_to_scrape.utils import safe_get_text, safe_get_attr, parse_record
 from src.books_to_scrape import settings
 
 
@@ -39,13 +35,6 @@ class TestWebConfig:
         assert parsed.scheme in ("http", "https"), f"URL debe empezar con http/https: {url}"
         assert parsed.netloc, f"URL no tiene dominio válido: {url}"
         print(f"[OK] URL válida: {url}")
-
-    def test_xpath_selectors_has_container(self):
-        """Verifica que existe el selector 'container' (obligatorio en el sistema)."""
-        web_config = load_web_config()
-        selectors = web_config["xpath_selectors"]
-        assert "container" in selectors, "Falta selector 'container' en xpath_selectors"
-        print("[OK] Selector 'container' presente")
 
     def test_xpath_selectors_format(self):
         """Verifica que los selectores XPath tienen formato válido."""
@@ -169,143 +158,6 @@ class TestRawConfig:
         mode = settings.RAW_CONFIG["retention"]["mode"]
         assert mode in valid_modes, f"Modo invalido: {mode}. Debe ser uno de {valid_modes}"
         print(f"[OK] Modo de retencion valido: {mode}")
-
-
-class TestProcess:
-    """Tests unitarios para process.py de books_to_scrape."""
-
-    def _make_df(self, rows: list[dict]) -> pd.DataFrame:
-        return pd.DataFrame(rows).astype(str).replace("nan", "")
-
-    def test_process_returns_list_of_dicts(self):
-        """Verifica que process() retorna una lista de diccionarios."""
-        df = self._make_df([
-            {"Numero": "1", "Titulo": "A Book", "Precio": "£12.99", "Rating": "star-rating Three"}
-        ])
-        result = process(df)
-        assert isinstance(result, list)
-        assert isinstance(result[0], dict)
-        print("[OK] process() retorna list[dict]")
-
-    def test_process_precio_gbp_conversion(self):
-        """Verifica que Precio_GBP extrae el valor numérico correctamente."""
-        df = self._make_df([
-            {"Numero": "1", "Titulo": "Book A", "Precio": "£51.77", "Rating": "star-rating One"},
-            {"Numero": "2", "Titulo": "Book B", "Precio": "£10.00", "Rating": "star-rating Two"},
-        ])
-        result = process(df)
-        assert result[0]["Precio_GBP"] == 51.77, f"Esperado 51.77, obtenido {result[0]['Precio_GBP']}"
-        assert result[1]["Precio_GBP"] == 10.00, f"Esperado 10.00, obtenido {result[1]['Precio_GBP']}"
-        print("[OK] Precio_GBP se convierte correctamente")
-
-    def test_process_rating_numerico_conversion(self):
-        """Verifica que Rating_Numerico mapea correctamente las 5 estrellas."""
-        casos = [
-            ("star-rating One",   1),
-            ("star-rating Two",   2),
-            ("star-rating Three", 3),
-            ("star-rating Four",  4),
-            ("star-rating Five",  5),
-        ]
-        for rating_raw, esperado in casos:
-            df = self._make_df([
-                {"Numero": "1", "Titulo": "X", "Precio": "£1.00", "Rating": rating_raw}
-            ])
-            result = process(df)
-            assert result[0]["Rating_Numerico"] == esperado, (
-                f"Rating '{rating_raw}': esperado {esperado}, obtenido {result[0]['Rating_Numerico']}"
-            )
-        print("[OK] Rating_Numerico mapea correctamente los 5 valores")
-
-    def test_process_precio_empty_returns_none(self):
-        """Verifica que un Precio vacío produce None en Precio_GBP."""
-        df = self._make_df([
-            {"Numero": "1", "Titulo": "Book", "Precio": "", "Rating": "star-rating One"}
-        ])
-        result = process(df)
-        assert result[0]["Precio_GBP"] is None, f"Precio vacío debe dar None, obtenido {result[0]['Precio_GBP']}"
-        print("[OK] Precio vacío produce None en Precio_GBP")
-
-    def test_process_preserves_all_records(self):
-        """Verifica que process() no descarta ni duplica registros."""
-        rows = [
-            {"Numero": str(i), "Titulo": f"Book {i}", "Precio": f"£{i}.99", "Rating": "star-rating One"}
-            for i in range(1, 6)
-        ]
-        df = self._make_df(rows)
-        result = process(df)
-        assert len(result) == 5, f"Esperado 5 registros, obtenidos {len(result)}"
-        print("[OK] process() preserva el número de registros")
-
-
-class TestUtils:
-    """Tests unitarios para utils.py de books_to_scrape."""
-
-    def _mock_element(self, text: str = "", attrs: dict | None = None):
-        """Crea un WebElement mock con texto y atributos configurables."""
-        element = MagicMock()
-        element.text = text
-        element.get_attribute = lambda attr: (attrs or {}).get(attr, None)
-        return element
-
-    def test_safe_get_text_returns_text(self):
-        """Verifica que safe_get_text devuelve el texto del elemento."""
-        child = self._mock_element(text="  £51.77  ")
-        parent = MagicMock()
-        parent.find_element.return_value = child
-
-        result = safe_get_text(parent, ".//p")
-        assert result == "£51.77"
-        print("[OK] safe_get_text devuelve texto limpio")
-
-    def test_safe_get_text_fallback_on_missing(self):
-        """Verifica que safe_get_text retorna fallback si el elemento no existe."""
-        from selenium.common.exceptions import NoSuchElementException
-        parent = MagicMock()
-        parent.find_element.side_effect = NoSuchElementException
-
-        result = safe_get_text(parent, ".//p", fallback="N/A")
-        assert result == "N/A"
-        print("[OK] safe_get_text retorna fallback cuando el elemento no existe")
-
-    def test_safe_get_attr_returns_attribute(self):
-        """Verifica que safe_get_attr devuelve el atributo solicitado."""
-        child = self._mock_element(attrs={"title": "A Light in the Attic"})
-        parent = MagicMock()
-        parent.find_element.return_value = child
-
-        result = safe_get_attr(parent, ".//h3/a", "title")
-        assert result == "A Light in the Attic"
-        print("[OK] safe_get_attr devuelve el atributo correctamente")
-
-    def test_safe_get_attr_fallback_on_missing(self):
-        """Verifica que safe_get_attr retorna fallback si el elemento no existe."""
-        from selenium.common.exceptions import NoSuchElementException
-        parent = MagicMock()
-        parent.find_element.side_effect = NoSuchElementException
-
-        result = safe_get_attr(parent, ".//h3/a", "title", fallback="")
-        assert result == ""
-        print("[OK] safe_get_attr retorna fallback cuando el elemento no existe")
-
-    def test_parse_record_includes_numero(self):
-        """Verifica que parse_record añade el campo Numero."""
-        selectors = {
-            "container": "//article",
-            "Titulo": ".//h3/a",
-            "Precio": ".//p",
-            "Rating": ".//p[@class]",
-        }
-        item = MagicMock()
-        item.find_element.return_value = MagicMock(
-            text="£10.00",
-            get_attribute=lambda attr: "star-rating Two" if attr == "class" else "A Book"
-        )
-
-        record = parse_record(item, selectors, index=3)
-        assert record["Numero"] == 3
-        assert "container" not in record
-        print("[OK] parse_record incluye Numero y omite 'container'")
 
 
 if __name__ == "__main__":

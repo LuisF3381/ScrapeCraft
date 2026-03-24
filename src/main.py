@@ -44,14 +44,12 @@ def _load_job_parts(job_name: str) -> tuple:
         raise SystemExit(1)
 
 
-def _make_args(job_name: str, reprocess: str | None = None) -> argparse.Namespace:
+def _make_args(job_name: str) -> argparse.Namespace:
     """Construye un Namespace de args para un job individual dentro de una serie."""
     return argparse.Namespace(
         job=job_name,
-        jobs=None,
-        all=False,
         pipeline=None,
-        reprocess=reprocess,
+        reprocess=None,
     )
 
 
@@ -65,14 +63,13 @@ def _run_series(job_entries: list[dict]) -> None:
     failed = []
 
     for i, entry in enumerate(job_entries, start=1):
-        job_name  = entry["name"]
-        params    = entry.get("params") or {}
-        reprocess = entry.get("reprocess")
+        job_name = entry["name"]
+        params   = entry.get("params") or {}
         logger.info(f"\n[{i}/{total}] Iniciando job: {job_name}")
 
         try:
             scrape_fn, process_fn, settings = _load_job_parts(job_name)
-            job_runner.run(_make_args(job_name, reprocess=reprocess), scrape_fn, process_fn, settings, job_name, params=params)
+            job_runner.run(_make_args(job_name), scrape_fn, process_fn, settings, job_name, params=params)
         except SystemExit:
             raise
         except Exception as e:
@@ -98,7 +95,6 @@ def _load_pipeline(path: str) -> list[dict]:
             params:                 # opcional, dict nativo YAML
               categoria: mystery
               pagina: 1
-            reprocess: "20260323"   # opcional, omitir para scraping normal
             enabled: false          # opcional, omitir o poner true para ejecutar
           - name: viviendas_adonde
     """
@@ -127,9 +123,8 @@ def _load_pipeline(path: str) -> list[dict]:
             logger.info(f"Job '{item['name']}' desactivado (enabled: false), omitiendo.")
             continue
         entries.append({
-            "name":      item["name"],
-            "params":    item.get("params") or {},
-            "reprocess": item.get("reprocess"),
+            "name":   item["name"],
+            "params": item.get("params") or {},
         })
 
     return entries
@@ -146,16 +141,6 @@ def main() -> None:
         "--job",
         metavar="JOB",
         help="Ejecutar un job individual (ej: books_to_scrape)"
-    )
-    mode_group.add_argument(
-        "--jobs",
-        metavar="JOB1,JOB2,...",
-        help="Ejecutar varios jobs en serie, separados por coma (ej: books_to_scrape,viviendas_adonde)"
-    )
-    mode_group.add_argument(
-        "--all",
-        action="store_true",
-        help="Ejecutar todos los jobs disponibles en serie"
     )
     mode_group.add_argument(
         "--pipeline",
@@ -200,27 +185,13 @@ def main() -> None:
         scrape_fn, process_fn, settings = _load_job_parts(args.job)
         job_runner.run(args, scrape_fn, process_fn, settings, args.job)
 
-    elif args.jobs:
-        job_names = [j.strip() for j in args.jobs.split(",") if j.strip()]
-        if not job_names:
-            parser.error("--jobs no puede estar vacio.")
-        _run_series([{"name": name} for name in job_names])
-
-    elif args.all:
-        job_names = sorted(get_available_jobs())
-        if not job_names:
-            logger.info("No se encontraron jobs. Crea uno en src/<nombre>/scraper.py")
-            raise SystemExit(0)
-        logger.info(f"Jobs a ejecutar: {', '.join(job_names)}")
-        _run_series([{"name": name} for name in job_names])
-
     elif args.pipeline:
         entries = _load_pipeline(args.pipeline)
         logger.info(f"Pipeline '{args.pipeline}': {len(entries)} job(s)")
         _run_series(entries)
 
     else:
-        parser.error("Especifica un modo de ejecucion: --job, --jobs, --all o --pipeline. Usa --list para ver los jobs disponibles.")
+        parser.error("Especifica un modo de ejecucion: --job o --pipeline. Usa --list para ver los jobs disponibles.")
 
 
 if __name__ == "__main__":

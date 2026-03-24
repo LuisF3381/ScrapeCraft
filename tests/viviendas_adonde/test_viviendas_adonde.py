@@ -42,8 +42,6 @@ class TestWebConfig:
         selectors = web_config["xpath_selectors"]
         xpath_pattern = re.compile(r"^(\.?//|/)")
 
-        assert "container" in selectors, "Falta selector 'container'"
-
         for name, xpath in selectors.items():
             assert xpath_pattern.match(xpath), f"XPath inválido para '{name}': {xpath} (debe empezar con / o // o .//)"
             print(f"[OK] XPath válido para '{name}'")

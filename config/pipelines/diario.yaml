@@ -9,11 +9,9 @@
 #   description (opcional): descripcion del pipeline
 #
 # Campos por job:
-#   name      (obligatorio): nombre del job (carpeta en src/)
-#   params    (opcional):    parametros como dict nativo YAML con tipos reales
-#   reprocess (opcional):    sufijo de raw a reprocesar, ej: "20260323_142546"
-#                            Si se omite, el job realiza scraping normal.
-#   enabled   (opcional):    false para omitir el job sin borrarlo (default: true)
+#   name    (obligatorio): nombre del job (carpeta en src/)
+#   params  (opcional):    parametros como dict nativo YAML con tipos reales
+#   enabled (opcional):    false para omitir el job sin borrarlo (default: true)
 # =============================================================================
 
 name: diario
@@ -37,6 +35,3 @@ jobs:
   #   params:
   #     region: lima
 
-  # Ejemplo: reprocesar raw existente sin volver a scrapear
-  # - name: books_to_scrape
-  #   reprocess: "20260323_142546"
