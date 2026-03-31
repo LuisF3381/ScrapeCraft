@@ -7,6 +7,27 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Defaults internos de formato
+# Actuan como red de seguridad cuando format_config no esta definido en settings.py.
+# En produccion, cada job debe declarar su propio format_config en STORAGE_CONFIG.
+# ---------------------------------------------------------------------------
+
+_FORMAT_DEFAULTS: dict[str, dict] = {
+    "csv":  {"encoding": "utf-8", "separator": ";", "index": False},
+    "json": {"indent": 2, "force_ascii": False, "orient": "records"},
+    "xml":  {"root": "registros", "row": "registro", "encoding": "utf-8"},
+    "xlsx": {"sheet_name": "Datos", "index": False},
+}
+
+
+def get_format_config(storage_config: dict, format: str) -> dict:
+    """
+    Retorna la configuracion del formato indicado desde storage_config["format_config"].
+    Si no esta definida, usa los defaults internos del framework.
+    """
+    return storage_config.get("format_config", {}).get(format, _FORMAT_DEFAULTS.get(format, {}))
+
 
 # ---------------------------------------------------------------------------
 # Helpers privados de lectura / escritura (no usar directamente)
@@ -101,50 +122,47 @@ def build_filepath(storage_config: dict, format: str, now: datetime | None = Non
     return filepath
 
 
-def save_data(datos: list[dict], format: str, data_config: dict, storage_config: dict, now: datetime | None = None) -> Path:
+def save_data(datos: list[dict], format: str, storage_config: dict, now: datetime | None = None) -> Path:
     """
     Guarda los datos en el formato y ubicacion especificados.
+    La config del formato se extrae de storage_config["format_config"].
 
     Args:
         datos:          Lista de diccionarios con los datos a guardar
         format:         Formato de salida (csv, json, xml, xlsx)
-        data_config:    Diccionario con configuraciones de cada formato
-        storage_config: Diccionario con configuracion de almacenamiento
+        storage_config: Diccionario con configuracion de almacenamiento (incluye format_config)
         now:            Momento de referencia para el nombre del archivo (ver build_filepath)
 
     Returns:
         Path: Ruta del archivo guardado
     """
-    if format not in data_config:
-        raise ValueError(f"Formato no soportado: {format}. Disponibles: {list(data_config.keys())}")
-
+    config = get_format_config(storage_config, format)
     filepath = build_filepath(storage_config, format, now)
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    _write_df(pd.DataFrame(datos), filepath, format, data_config[format])
+    _write_df(pd.DataFrame(datos), filepath, format, config)
     logger.info(f"Datos guardados en {filepath} ({len(datos)} registros)")
     return filepath
 
 
-def save_raw(datos: pd.DataFrame, raw_config: dict, data_config: dict, now: datetime | None = None) -> str:
+def save_raw(datos: pd.DataFrame, storage_config: dict, now: datetime | None = None) -> str:
     """
-    Guarda los datos en bruto con sufijo timestamp en el formato indicado por raw_config.
+    Guarda los datos en bruto con sufijo timestamp.
+    El formato del raw es output_formats[0]; la config se extrae de format_config.
 
     Args:
-        datos:       DataFrame ya construido con los datos a guardar (string-first)
-        raw_config:  Diccionario con configuracion del raw
-        data_config: Diccionario con configuraciones de formato (DATA_CONFIG)
-        now:         Momento de referencia para el sufijo. Si es None se usa datetime.now().
-                     Pasar el mismo valor que a save_data() garantiza coherencia entre raw y output.
+        datos:          DataFrame ya construido con los datos a guardar (string-first)
+        storage_config: Diccionario con configuracion de almacenamiento (incluye raw_folder,
+                        output_formats y format_config)
+        now:            Momento de referencia para el sufijo. Si es None se usa datetime.now().
+                        Pasar el mismo valor que a save_data() garantiza coherencia entre raw y output.
 
     Returns:
         str: Sufijo timestamp generado (ej: "20260312_143052")
     """
-    raw_folder = Path(raw_config["raw_folder"])
-    filename: str = raw_config["filename"]
-    format: str = raw_config["format"]
-
-    if format not in data_config:
-        raise ValueError(f"Formato raw no soportado: {format}. Disponibles: {list(data_config.keys())}")
+    raw_folder = Path(storage_config["raw_folder"])
+    filename: str = storage_config["filename"]
+    format: str = storage_config["output_formats"][0]
+    config = get_format_config(storage_config, format)
 
     raw_folder.mkdir(parents=True, exist_ok=True)
 
@@ -153,59 +171,62 @@ def save_raw(datos: pd.DataFrame, raw_config: dict, data_config: dict, now: date
     filepath = raw_folder / f"{filename}_{suffix}.{format}"
 
     # stringify=False: el DataFrame ya llega normalizado a string desde job_runner
-    _write_df(datos, filepath, format, data_config[format], stringify=False)
+    _write_df(datos, filepath, format, config, stringify=False)
     logger.info(f"Raw guardado en {filepath} ({len(datos)} registros)")
 
     return suffix
 
 
-def load_output(filepath: Path, format: str, data_config: dict) -> pd.DataFrame:
+def load_output(filepath: Path, format: str, storage_config: dict) -> pd.DataFrame:
     """
     Lee un archivo de output y lo retorna como DataFrame.
     Usado por el runner para cargar los outputs de cada job antes de consolidar.
 
     Args:
-        filepath:    Ruta del archivo a leer
-        format:      Formato del archivo (csv, json, xml, xlsx)
-        data_config: Diccionario con configuraciones de formato (DATA_CONFIG)
+        filepath:       Ruta del archivo a leer
+        format:         Formato del archivo (csv, json, xml, xlsx)
+        storage_config: Diccionario con configuracion de almacenamiento del job (incluye format_config)
 
     Returns:
         pd.DataFrame con el contenido del archivo
     """
-    if format not in data_config:
-        raise ValueError(f"Formato no soportado: {format}. Disponibles: {list(data_config.keys())}")
-    return _read_df(filepath, format, data_config[format])
+    config = get_format_config(storage_config, format)
+    return _read_df(filepath, format, config)
 
 
-def load_raw(suffix: str, raw_config: dict, data_config: dict) -> pd.DataFrame:
+def load_raw(suffix: str, storage_config: dict) -> pd.DataFrame:
     """
     Lee un archivo raw y lo retorna como DataFrame sin transformaciones.
+    El formato se deriva de output_formats[0].
 
     Args:
-        suffix:      Sufijo timestamp de la ejecucion (ej: "20260312_143052")
-        raw_config:  Diccionario con configuracion del raw
-        data_config: Diccionario con configuraciones de formato (DATA_CONFIG)
+        suffix:         Sufijo timestamp de la ejecucion (ej: "20260312_143052")
+        storage_config: Diccionario con configuracion de almacenamiento (incluye raw_folder,
+                        output_formats y format_config)
 
     Returns:
         pd.DataFrame: Datos del raw sin transformar
     """
-    filename: str = raw_config["filename"]
-    extension: str = raw_config["format"]
-    filepath = Path(raw_config["raw_folder"]) / f"{filename}_{suffix}.{extension}"
-    return _read_df(filepath, extension, data_config[extension])
+    filename: str = storage_config["filename"]
+    format: str = storage_config["output_formats"][0]
+    raw_folder = Path(storage_config["raw_folder"])
+    config = get_format_config(storage_config, format)
+    filepath = raw_folder / f"{filename}_{suffix}.{format}"
+    return _read_df(filepath, format, config)
 
 
-def cleanup_raw(raw_config: dict) -> None:
+def cleanup_raw(storage_config: dict) -> None:
     """
     Limpia archivos raw segun la politica de retencion configurada.
 
     Args:
-        raw_config: Diccionario con configuracion del raw
+        storage_config: Diccionario con configuracion de almacenamiento (incluye raw_folder,
+                        output_formats y retention)
     """
-    raw_folder = Path(raw_config["raw_folder"])
-    filename: str = raw_config["filename"]
-    format: str = raw_config["format"]
-    retention: dict = raw_config.get("retention", {"mode": "keep_all"})
+    raw_folder = Path(storage_config["raw_folder"])
+    filename: str = storage_config["filename"]
+    format: str = storage_config["output_formats"][0]
+    retention: dict = storage_config.get("retention", {"mode": "keep_all"})
     mode: str = retention.get("mode", "keep_all")
 
     if mode == "keep_all":

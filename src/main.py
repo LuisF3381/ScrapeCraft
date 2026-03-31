@@ -7,8 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from src.shared import job_runner
 from src.shared import logger as logger_module
-from src.shared.storage import save_data, load_output, clear_latest, copy_to_latest, merge_logs_to_latest
-from config import global_settings
+from src.shared.storage import save_data, load_output, clear_latest, copy_to_latest, merge_logs_to_latest, get_format_config
 
 # Logger del orquestador en namespace propio para que setup_logger() (que limpia "src")
 # no elimine su handler entre jobs de un pipeline.
@@ -78,8 +77,10 @@ def _make_args(job_name: str) -> argparse.Namespace:
 
 def _validate_consolidation(job_entries: list[dict], consolidate_config: dict) -> None:
     """
-    Valida antes de correr cualquier job que todos tengan el formato de
-    consolidacion en su output_formats. Falla rapido con mensaje claro.
+    Valida antes de correr cualquier job que:
+    1. Todos los jobs incluyen el formato de consolidacion en su output_formats.
+    2. Todos los jobs tienen la misma format_config para ese formato.
+    Falla rapido con mensaje claro.
     """
     fmt = consolidate_config.get("format")
     if not fmt:
@@ -95,12 +96,14 @@ def _validate_consolidation(job_entries: list[dict], consolidate_config: dict) -
         logger.error("consolidate.module es obligatorio cuando consolidate.enabled es true.")
         raise SystemExit(1)
 
+    fmt_configs: dict[str, dict] = {}
     for entry in job_entries:
         job_name = entry["name"]
         try:
             settings = importlib.import_module(f"src.{job_name}.settings")
         except ModuleNotFoundError:
             continue  # El error de job no encontrado se manejara al ejecutarlo
+
         output_formats = settings.STORAGE_CONFIG.get("output_formats", ["csv"])
         if fmt not in output_formats:
             logger.error(
@@ -109,6 +112,19 @@ def _validate_consolidation(job_entries: list[dict], consolidate_config: dict) -
                 f"Agrega '{fmt}' a STORAGE_CONFIG['output_formats'] en src/{job_name}/settings.py"
             )
             raise SystemExit(1)
+
+        fmt_configs[job_name] = get_format_config(settings.STORAGE_CONFIG, fmt)
+
+    unique_configs = {str(sorted(c.items())) for c in fmt_configs.values()}
+    if len(unique_configs) > 1:
+        detail = "\n  ".join(f"{j}: {c}" for j, c in fmt_configs.items())
+        logger.error(
+            f"Consolidacion activada con format='{fmt}', pero los jobs tienen "
+            f"format_config distintas para ese formato:\n  {detail}\n"
+            f"Todos los jobs deben compartir la misma format_config para '{fmt}' "
+            f"en STORAGE_CONFIG['format_config'] de su settings.py."
+        )
+        raise SystemExit(1)
 
 
 def _run_consolidation(job_outputs: dict[str, Path], consolidate_config: dict) -> dict[str, Path]:
@@ -138,10 +154,10 @@ def _run_consolidation(job_outputs: dict[str, Path], consolidate_config: dict) -
     logger.info(f"Fuentes: {list(job_outputs.keys())}")
 
     consolidation_fmt = consolidate_config["format"]
-    job_dataframes = {
-        job_name: load_output(filepath, consolidation_fmt, global_settings.DATA_CONFIG)
-        for job_name, filepath in job_outputs.items()
-    }
+    job_dataframes: dict[str, pd.DataFrame] = {}
+    for job_name, filepath in job_outputs.items():
+        job_settings = importlib.import_module(f"src.{job_name}.settings")
+        job_dataframes[job_name] = load_output(filepath, consolidation_fmt, job_settings.STORAGE_CONFIG)
 
     result = consolidator.consolidate(job_dataframes, params)
 
@@ -165,7 +181,7 @@ def _run_consolidation(job_outputs: dict[str, Path], consolidate_config: dict) -
 
     paths: dict[str, Path] = {}
     for output_fmt in output_formats:
-        paths[output_fmt] = save_data(result, output_fmt, global_settings.DATA_CONFIG, storage_config, now)
+        paths[output_fmt] = save_data(result, output_fmt, storage_config, now)
 
     logger.info("Consolidacion finalizada")
     return paths

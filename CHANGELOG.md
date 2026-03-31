@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.45.0] - 2026-03-30
+
+### Added
+- `src/shared/storage.py` `get_format_config(storage_config, format)`: nueva funcion publica que extrae la config de escritura/lectura de un formato desde `storage_config["format_config"]`; si la clave no esta definida actua como red de seguridad y retorna los defaults internos del framework (`_FORMAT_DEFAULTS`); usada internamente por todas las funciones de I/O y externamente por `main.py` en la validacion de consolidacion
+- `src/shared/storage.py` `_FORMAT_DEFAULTS`: constante interna con los valores por defecto para todos los formatos soportados; actua unicamente como fallback cuando `format_config` no esta definido en `STORAGE_CONFIG`
+- `tests/test_pipelines.py` `test_consolidate_format_config_compatible`: nuevo test que verifica que todos los jobs activos de un pipeline consolidado comparten la misma `format_config` para el formato de consolidacion; usa `get_format_config` para comparar las configs efectivas
+- `tests/<job>/test_<job>.py` `TestStorageConfig.test_storage_config_raw_folder_is_valid_path`: nuevo test que verifica que `raw_folder` es una cadena no vacia en ambos jobs
+- `tests/<job>/test_<job>.py` `TestStorageConfig.test_storage_config_retention_mode_is_valid`: nuevo test que verifica que el modo de retencion es uno de los valores soportados
+- `tests/<job>/test_<job>.py` `TestStorageConfig.test_storage_config_format_config_covers_output_formats`: nuevo test que verifica que `format_config` define una entrada (dict no vacio) por cada formato declarado en `output_formats`
+
+### Changed
+- `src/<job>/settings.py` (x2): `RAW_CONFIG` eliminado como variable independiente — sus campos (`raw_folder`, `retention`) se absorben en `STORAGE_CONFIG`; se agrega la clave `format_config` en `STORAGE_CONFIG` con las opciones de escritura/lectura para cada formato usado por el job; el formato del raw ya no se declara explicitamente — se deriva del primer elemento de `output_formats`
+- `src/consolidadores/ejemplo.py`: `STORAGE_CONFIG` incorpora la nueva clave `format_config` con la config del formato de consolidacion; el comentario de restriccion actualizado para reflejar la nueva validacion de compatibilidad de configs
+- `config/global_settings.py`: eliminado el bloque `DATA_CONFIG` — ya no es necesario porque cada job gestiona su propia config de formatos; el comentario del archivo actualizado para reflejar que la config de formatos vive en `STORAGE_CONFIG["format_config"]` de cada job
+- `src/shared/storage.py` `save_data()`: firma simplificada de `(datos, format, data_config, storage_config, now)` a `(datos, format, storage_config, now)` — `data_config` eliminado; la config del formato se extrae internamente via `get_format_config`
+- `src/shared/storage.py` `save_raw()`: firma simplificada de `(datos, raw_config, data_config, now)` a `(datos, storage_config, now)` — `raw_config` y `data_config` eliminados; el formato del raw se deriva de `storage_config["output_formats"][0]`; la config del formato se extrae via `get_format_config`
+- `src/shared/storage.py` `load_output()`: firma simplificada de `(filepath, format, data_config)` a `(filepath, format, storage_config)` — usa `get_format_config` para extraer la config del job
+- `src/shared/storage.py` `load_raw()`: firma simplificada de `(suffix, raw_config, data_config)` a `(suffix, storage_config)` — el formato y su config se derivan del `storage_config` del job
+- `src/shared/storage.py` `cleanup_raw()`: firma simplificada de `(raw_config)` a `(storage_config)` — extrae `raw_folder`, formato y retencion directamente del `storage_config`
+- `src/shared/job_runner.py`: eliminada la referencia a `global_settings.DATA_CONFIG` en las llamadas a `save_raw`, `load_raw` y `save_data`; todas las funciones de storage reciben ahora solo `settings.STORAGE_CONFIG`; `cleanup_raw` actualizado a `cleanup_raw(settings.STORAGE_CONFIG)`
+- `src/main.py`: eliminada la importacion de `global_settings` (ya no se usa en este modulo); importado `get_format_config` desde `storage`; `_validate_consolidation` ampliada con un segundo chequeo que compara la `format_config` efectiva de todos los jobs para el formato de consolidacion y falla con mensaje detallado si difieren; `_run_consolidation` actualizado para cargar dinamicamente el `settings` de cada job y usar `load_output(filepath, fmt, job_settings.STORAGE_CONFIG)` en lugar del `DATA_CONFIG` global
+- `tests/test_global.py`: eliminada la clase `TestDataConfig` (sus dos tests validaban `DATA_CONFIG` en `global_settings`, que ya no existe)
+- `tests/<job>/test_<job>.py` (x2): eliminada la clase `TestRawConfig` (sus cuatro tests validaban `RAW_CONFIG`, que ya no existe); `TestStorageConfig.test_storage_config_has_required_keys` actualizado para exigir las 7 claves del nuevo `STORAGE_CONFIG` unificado
+
 ## [0.44.0] - 2026-03-25
 
 ### Added

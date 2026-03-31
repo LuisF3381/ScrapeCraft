@@ -1,10 +1,11 @@
 """
 Configuracion especifica del job books_to_scrape.
-Para configuracion global (logs, formatos) ver config/global_settings.py
+Para configuracion global (logs) ver config/global_settings.py
 """
 # =========================================================================
 # ZONA DATA ENGINEER — configurar todos los bloques de este archivo
 # =========================================================================
+
 # ============================================
 # CONFIGURACIÓN DEL DRIVER
 # ============================================
@@ -34,6 +35,8 @@ DRIVER_CONFIG = {
 # ============================================
 
 STORAGE_CONFIG = {
+    # --- Output ---
+
     # Carpeta de salida (relativa a la raíz del proyecto)
     "output_folder": "output/books_to_scrape",
 
@@ -41,37 +44,21 @@ STORAGE_CONFIG = {
     "filename": "books",
 
     # Modo de nombrado del archivo:
-    # - "overwrite": Sobrescribe el archivo (books.csv)
-    # - "date_suffix": Añade fecha al nombre (books_20260130.csv)
-    # - "timestamp_suffix": Añade fecha y hora (books_20260130_143052.csv)
-    # - "date_folder": Crea subcarpeta con fecha (20260130/books.csv)
+    # - "overwrite":        Sobrescribe el archivo             (books.csv)
+    # - "date_suffix":      Añade fecha al nombre              (books_20260130.csv)
+    # - "timestamp_suffix": Añade fecha y hora                 (books_20260130_143052.csv)
+    # - "date_folder":      Crea subcarpeta con fecha          (20260130/books.csv)
     "naming_mode": "date_suffix",
 
     # Formatos de salida: lista de formatos a exportar
     # Opciones disponibles: "csv", "json", "xml", "xlsx"
-    "output_formats": ["csv", "json"]
-}
+    # Nota: el primer formato tambien se usa para guardar el raw
+    "output_formats": ["csv", "json"],
 
-# ============================================
-# CONFIGURACIÓN DEL PIPELINE
-# ============================================
+    # --- Raw ---
 
-# Si es True, omite el paso de process.py y guarda el raw directamente.
-SKIP_PROCESS = False
-
-# ============================================
-# CONFIGURACIÓN DE RAW (datos en bruto)
-# ============================================
-
-RAW_CONFIG = {
-    # Carpeta donde se guardan los archivos raw
+    # Carpeta donde se guardan los archivos raw (datos en bruto pre-procesamiento)
     "raw_folder": "raw/books_to_scrape",
-
-    # Nombre base del archivo raw (sin extension ni sufijo)
-    "filename": "books",
-
-    # Formato del archivo raw: csv | json | xml | xlsx
-    "format": "csv",
 
     # Politica de retencion de archivos raw:
     # - "keep_all":    Conserva todos los archivos
@@ -80,5 +67,29 @@ RAW_CONFIG = {
     "retention": {
         "mode": "keep_last_n",
         "value": 5
+    },
+
+    # --- Configuracion de formatos ---
+
+    # Opciones de escritura/lectura para cada formato usado por este job.
+    # Define al menos los formatos declarados en output_formats.
+    "format_config": {
+        "csv": {
+            "encoding": "utf-8",
+            "separator": ";",
+            "index": False
+        },
+        "json": {
+            "indent": 2,
+            "force_ascii": False,
+            "orient": "records"
+        }
     }
 }
+
+# ============================================
+# CONFIGURACIÓN DEL PIPELINE
+# ============================================
+
+# Si es True, omite el paso de process.py y guarda el raw directamente.
+SKIP_PROCESS = False

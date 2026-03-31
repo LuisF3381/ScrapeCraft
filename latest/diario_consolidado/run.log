@@ -1,38 +1,39 @@
 ============================================================
-LOG: books_to_scrape_20260325_135650.log
+LOG: books_to_scrape_20260330_203133.log
 ============================================================
-2026-03-25 13:56:50,352 - INFO - Iniciando scraper...
-2026-03-25 13:56:50,352 - INFO - Parametros recibidos: {'categoria': 'mystery', 'pagina': 1}
-2026-03-25 13:56:50,355 - INFO - Configuracion cargada: http://books.toscrape.com/
-2026-03-25 13:56:52,328 - INFO - Driver inicializado correctamente
-2026-03-25 13:56:53,241 - INFO - Pagina cargada correctamente
-2026-03-25 13:56:54,278 - INFO - Encontrados 20 libros
-2026-03-25 13:56:57,907 - INFO - Raw guardado en raw\books_to_scrape\books_20260325_135650.csv (20 registros)
-2026-03-25 13:56:57,908 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260325_135650
-2026-03-25 13:56:57,919 - INFO - Procesamiento completado: 20 registros
-2026-03-25 13:56:57,923 - INFO - Ejecutando validaciones...
-2026-03-25 13:56:57,924 - INFO - Validacion exitosa
-2026-03-25 13:56:57,930 - INFO - Datos guardados en output\books_to_scrape\books_20260325.csv (20 registros)
-2026-03-25 13:56:57,936 - INFO - Datos guardados en output\books_to_scrape\books_20260325.json (20 registros)
-2026-03-25 13:56:57,936 - INFO - Proceso finalizado
+2026-03-30 20:31:33,116 - INFO - Iniciando scraper...
+2026-03-30 20:31:33,117 - INFO - Parametros recibidos: {'categoria': 'mystery', 'pagina': 1}
+2026-03-30 20:31:33,119 - INFO - Configuracion cargada: http://books.toscrape.com/
+2026-03-30 20:31:35,047 - INFO - Driver inicializado correctamente
+2026-03-30 20:31:35,991 - INFO - Pagina cargada correctamente
+2026-03-30 20:31:37,007 - INFO - Encontrados 20 libros
+2026-03-30 20:31:40,245 - INFO - Raw guardado en raw\books_to_scrape\books_20260330_203133.csv (20 registros)
+2026-03-30 20:31:40,245 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260330_203133
+2026-03-30 20:31:40,248 - INFO - Procesamiento completado: 20 registros
+2026-03-30 20:31:40,250 - INFO - Ejecutando validaciones...
+2026-03-30 20:31:40,251 - INFO - Validacion exitosa
+2026-03-30 20:31:40,256 - INFO - Datos guardados en output\books_to_scrape\books_20260330.csv (20 registros)
+2026-03-30 20:31:40,259 - INFO - Datos guardados en output\books_to_scrape\books_20260330.json (20 registros)
+2026-03-30 20:31:40,259 - INFO - Proceso finalizado
+2026-03-30 20:31:40,261 - INFO - Raw eliminado: raw\books_to_scrape\books_20260325_135636.csv
 
 ============================================================
-LOG: viviendas_adonde_20260325_135657.log
+LOG: viviendas_adonde_20260330_203140.log
 ============================================================
-2026-03-25 13:56:57,950 - INFO - Iniciando scraper...
-2026-03-25 13:56:57,951 - INFO - Parametros recibidos: {'pais': 'peru', 'max_paginas': 5, 'solo_nuevos': True}
-2026-03-25 13:56:57,955 - INFO - Configuracion cargada: https://www.adondevivir.com/inmuebles-en-alquiler.html
-2026-03-25 13:57:01,844 - INFO - Driver inicializado correctamente
-2026-03-25 13:57:07,876 - INFO - Pagina cargada correctamente
-2026-03-25 13:57:12,902 - INFO - Encontrados 27 elementos
-2026-03-25 13:57:18,821 - INFO - Raw guardado en raw\viviendas_adonde\viviendas_20260325_135657.csv (27 registros)
-2026-03-25 13:57:18,821 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260325_135657
-2026-03-25 13:57:18,824 - INFO - Procesamiento completado: 27 registros
-2026-03-25 13:57:18,826 - INFO - Ejecutando validaciones...
-2026-03-25 13:57:18,827 - INFO - Validacion exitosa
-2026-03-25 13:57:18,832 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260325.csv (27 registros)
-2026-03-25 13:57:18,836 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260325.json (27 registros)
-2026-03-25 13:57:18,836 - INFO - Proceso finalizado
-2026-03-25 13:57:18,884 - INFO - Datos guardados en output\consolidados\consolidado_20260325.csv (47 registros)
-2026-03-25 13:57:18,899 - INFO - Latest actualizado: latest\diario_consolidado\consolidado.csv
+2026-03-30 20:31:40,265 - INFO - Iniciando scraper...
+2026-03-30 20:31:40,265 - INFO - Parametros recibidos: {'pais': 'peru', 'max_paginas': 5, 'solo_nuevos': True}
+2026-03-30 20:31:40,268 - INFO - Configuracion cargada: https://www.adondevivir.com/inmuebles-en-alquiler.html
+2026-03-30 20:31:43,803 - INFO - Driver inicializado correctamente
+2026-03-30 20:31:49,765 - INFO - Pagina cargada correctamente
+2026-03-30 20:31:54,779 - INFO - Encontrados 27 elementos
+2026-03-30 20:31:59,596 - INFO - Raw guardado en raw\viviendas_adonde\viviendas_20260330_203140.csv (27 registros)
+2026-03-30 20:31:59,597 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260330_203140
+2026-03-30 20:31:59,600 - INFO - Procesamiento completado: 27 registros
+2026-03-30 20:31:59,602 - INFO - Ejecutando validaciones...
+2026-03-30 20:31:59,603 - INFO - Validacion exitosa
+2026-03-30 20:31:59,610 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260330.csv (27 registros)
+2026-03-30 20:31:59,614 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260330.json (27 registros)
+2026-03-30 20:31:59,614 - INFO - Proceso finalizado
+2026-03-30 20:31:59,679 - INFO - Datos guardados en output\consolidados\consolidado_20260330.csv (47 registros)
+2026-03-30 20:31:59,694 - INFO - Latest actualizado: latest\diario_consolidado\consolidado.csv
 

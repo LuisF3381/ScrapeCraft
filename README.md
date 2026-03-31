@@ -27,7 +27,7 @@ ScrapeCraft/
 │   ├── consolidadores/                # Modulos de consolidacion (uno por pipeline)
 │   │   └── ejemplo.py                 # Consolidador de ejemplo
 │   ├── viviendas_adonde/              # Job: portal de alquiler de inmuebles
-│   │   ├── settings.py                # Config del job: DRIVER, STORAGE, RAW, SKIP_PROCESS
+│   │   ├── settings.py                # Config del job: DRIVER_CONFIG, STORAGE_CONFIG, SKIP_PROCESS
 │   │   ├── web_config.yaml            # URL, selectores y waits
 │   │   ├── scraper.py
 │   │   ├── process.py
@@ -41,7 +41,7 @@ ScrapeCraft/
 │       ├── validate.py                # Validaciones antes de guardar (gobierno de datos)
 │       └── utils.py
 ├── config/
-│   ├── global_settings.py             # Config global: LOG_CONFIG, DATA_CONFIG
+│   ├── global_settings.py             # Config global: LOG_CONFIG
 │   └── pipelines/
 │       ├── diario.yaml                # Ejemplo de pipeline multi-job
 │       └── diario_consolidado.yaml    # Ejemplo de pipeline con consolidacion
@@ -295,7 +295,7 @@ El bloque `consolidate` requiere:
 - `format` (str): formato compartido por todos los jobs (`csv`, `json`, `xml`, `xlsx`); todos deben incluirlo en su `output_formats`
 - `params` (dict, opcional): parametros adicionales para la logica del consolidador
 
-El framework valida estos requisitos **antes de lanzar cualquier job** — fallo rapido si algun job no cumple el formato requerido.
+El framework valida estos requisitos **antes de lanzar cualquier job** — fallo rapido si algun job no cumple el formato requerido o si los jobs tienen `format_config` distintas para el formato compartido.
 
 ### Crear un consolidador
 
@@ -312,6 +312,10 @@ STORAGE_CONFIG = {
     "filename": "mi_consolidado",
     "naming_mode": "date_suffix",
     "output_formats": ["csv"],
+    "format_config": {
+        "csv": {"encoding": "utf-8", "separator": ";", "index": False},
+        # Debe coincidir con la format_config de los jobs para el formato de consolidacion
+    }
 }
 
 def consolidate(job_dataframes: dict[str, pd.DataFrame], params: dict = None) -> list[dict]:
@@ -321,7 +325,7 @@ def consolidate(job_dataframes: dict[str, pd.DataFrame], params: dict = None) ->
     return resultado.to_dict(orient="records")
 ```
 
-El framework se encarga de leer los archivos de cada job con la configuracion correcta de `DATA_CONFIG` y entrega los DataFrames listos. El data engineer solo escribe logica.
+El framework lee los outputs de cada job usando su propia `format_config` y entrega los DataFrames listos. El data engineer solo escribe logica.
 
 Opcionalmente, el equipo de gobierno puede anadir una funcion `validate(df)` al consolidador siguiendo el mismo contrato que `src/<job>/validate.py`. Si esta presente, el framework la ejecuta despues de `consolidate()` y antes de guardar el output.
 
@@ -427,7 +431,7 @@ Esto garantiza que la ruta `latest/<job>/<filename>.<ext>` sea invariante entre 
 
 ### Global (`config/global_settings.py`)
 
-Aplica a todos los jobs. Contiene `LOG_CONFIG` y `DATA_CONFIG`.
+Aplica a todos los jobs. Contiene unicamente `LOG_CONFIG`.
 
 ```python
 LOG_CONFIG = {
@@ -438,20 +442,11 @@ LOG_CONFIG = {
 
 Cada ejecucion genera su propio archivo de log: `log/<job>_YYYYMMDD_HHMMSS.log`. El timestamp completo garantiza que multiples ejecuciones del mismo dia no mezclen sus logs.
 
-```python
-DATA_CONFIG = {
-    "csv":  {"encoding": "utf-8", "separator": ";", "index": False},
-    "json": {"indent": 2, "force_ascii": False, "orient": "records"},
-    "xml":  {"root": "registros", "row": "registro", "encoding": "utf-8"},
-    "xlsx": {"sheet_name": "Datos", "index": False}
-}
-```
-
-`DATA_CONFIG` es la unica fuente de verdad para los parametros de cada formato. Se aplica tanto al output final (`save_data`) como al raw intermedio (`save_raw`, `load_raw`, `process.py`).
+La configuracion de formatos (encoding, separadores, etc.) ya no vive aqui — cada job la declara en `STORAGE_CONFIG["format_config"]` de su propio `settings.py`.
 
 ### Por job (`src/<job>/settings.py`)
 
-Especifica del job. Contiene `DRIVER_CONFIG`, `STORAGE_CONFIG`, `RAW_CONFIG` y `SKIP_PROCESS`.
+Especifica del job. Contiene `DRIVER_CONFIG`, `STORAGE_CONFIG` y `SKIP_PROCESS`.
 
 ```python
 DRIVER_CONFIG = {
@@ -464,19 +459,25 @@ DRIVER_CONFIG = {
 }
 
 STORAGE_CONFIG = {
+    # --- Output ---
     "output_folder": "output/viviendas_adonde",
     "filename": "viviendas",
     "naming_mode": "date_suffix",    # overwrite | date_suffix | timestamp_suffix | date_folder
-    "output_formats": ["csv", "json"]
-}
+    "output_formats": ["csv", "json"],
+    #                   ↑ el primer formato tambien define el formato del raw
 
-RAW_CONFIG = {
+    # --- Raw ---
     "raw_folder": "raw/viviendas_adonde",
-    "filename": "viviendas",
-    "format": "csv",             # csv | json | xml | xlsx
     "retention": {
         "mode": "keep_last_n",  # keep_all | keep_last_n | keep_days
         "value": 5
+    },
+
+    # --- Formatos ---
+    "format_config": {
+        "csv":  {"encoding": "utf-8", "separator": ";", "index": False},
+        "json": {"indent": 2, "force_ascii": False, "orient": "records"},
+        # Define una entrada por cada formato en output_formats
     }
 }
 
@@ -492,16 +493,14 @@ SKIP_PROCESS = False   # True: omite process.py y guarda el raw directamente
 | `timestamp_suffix` | `output/<job>/viviendas_20260130_143052.csv` | Multiples ejecuciones por dia |
 | `date_folder` | `output/<job>/20260130/viviendas.csv` | Organizar por carpetas |
 
-#### Formato de raw (`format`)
+#### Formato del raw
 
-El campo `format` determina en que formato se persiste el raw intermedio. El pipeline usa automaticamente la configuracion de `DATA_CONFIG[format]` para leer y escribir.
+El raw siempre usa el **primer formato de `output_formats`** y su config correspondiente de `format_config`. No hay campo separado para declararlo — se deriva automaticamente:
 
-| Formato | Config aplicada | Archivo generado |
-|---------|-----------------|------------------|
-| `csv`  | `DATA_CONFIG["csv"]`  | `viviendas_20260312_143052.csv`  |
-| `json` | `DATA_CONFIG["json"]` | `viviendas_20260312_143052.json` |
-| `xml`  | `DATA_CONFIG["xml"]`  | `viviendas_20260312_143052.xml`  |
-| `xlsx` | `DATA_CONFIG["xlsx"]` | `viviendas_20260312_143052.xlsx` |
+```python
+"output_formats": ["csv", "json"]   # raw → CSV con format_config["csv"]
+"output_formats": ["json", "csv"]   # raw → JSON con format_config["json"]
+```
 
 #### Politicas de retencion de raw
 
@@ -538,13 +537,13 @@ Archivos marcados con `# ZONA DATA ENGINEER`. El data engineer implementa la ext
 | Archivo | Zona | Que implementar |
 |---------|------|-----------------|
 | `src/<job>/web_config.yaml` | Completo | `url`, `selectors`, `waits` |
-| `src/<job>/settings.py` | Completo | `DRIVER_CONFIG`, `STORAGE_CONFIG`, `RAW_CONFIG`, `SKIP_PROCESS` |
+| `src/<job>/settings.py` | Completo | `DRIVER_CONFIG`, `STORAGE_CONFIG` (incluye raw, retencion y `format_config`), `SKIP_PROCESS` |
 | `src/<job>/scraper.py` | Cuerpo de `scrape()` | Navegacion, manejo de CAPTCHA, extraccion de elementos |
 | `src/<job>/utils.py` | Cuerpo de `parse_record()` | Extraccion campo a campo (texto, atributo, logica especial) |
 | `src/<job>/process.py` | Cuerpo de `process()` + constantes de apoyo | Transformaciones, castings de tipo, columnas derivadas |
 | `src/consolidadores/<nombre>.py` | `STORAGE_CONFIG` + cuerpo de `consolidate()` | Desempaquetar DataFrames y logica de combinacion |
 | `config/pipelines/<nombre>.yaml` | Completo | Jobs, params, bloque `consolidate` |
-| `config/global_settings.py` | Completo (casos excepcionales) | Encoding, separadores, estructura XML, nivel de log |
+| `config/global_settings.py` | Completo (casos excepcionales) | Nivel de log, carpeta de logs |
 
 ### Zona gobierno de datos
 
@@ -565,7 +564,7 @@ Lo que **ninguna** zona toca:
 2. Crear `src/<nombre>/utils.py` con `parse_record()` (importa `safe_get_text`/`safe_get_attr` desde `src.shared.utils`)
 3. Crear `src/<nombre>/process.py` con la logica de transformacion
 4. Crear `src/<nombre>/validate.py` con la funcion `validate()` — obligatorio; dejar la ZONA GOBIERNO DE DATOS vacia hasta que el equipo de gobierno la rellene
-5. Crear `src/<nombre>/settings.py` con `DRIVER_CONFIG`, `STORAGE_CONFIG`, `RAW_CONFIG` y `SKIP_PROCESS`
+5. Crear `src/<nombre>/settings.py` con `DRIVER_CONFIG`, `STORAGE_CONFIG` (con `raw_folder`, `retention` y `format_config`) y `SKIP_PROCESS`
 6. Crear `src/<nombre>/web_config.yaml` con la URL y los selectores
 
 Las carpetas `output/<nombre>/` y `raw/<nombre>/` se crean automaticamente en la primera ejecucion. No es necesario modificar `main.py` ni ningun otro modulo del framework — el dispatcher descubre el job automaticamente por la presencia de `scraper.py`.
@@ -684,26 +683,32 @@ def run(args, scrape_fn, process_fn, validate_fn, settings, job_name: str, param
 ### `src/shared/storage.py`
 
 ```python
-def save_data(datos, format, data_config, storage_config, now=None) -> Path:
+def get_format_config(storage_config: dict, format: str) -> dict:
+    """Retorna la config del formato desde storage_config["format_config"].
+    Si no esta definida, usa los defaults internos del framework como red de seguridad."""
+
+def save_data(datos, format, storage_config, now=None) -> Path:
     """Guarda los datos en el formato y ubicacion especificados preservando los tipos de cada campo.
+    La config del formato se extrae de storage_config["format_config"].
     now: datetime opcional; si se omite se usa datetime.now(). Pasar el mismo valor que a save_raw()
     garantiza timestamps coherentes entre el raw y el output de una misma ejecucion.
     Retorna la ruta del archivo guardado."""
 
-def save_raw(datos: pd.DataFrame, raw_config, data_config, now=None) -> str:
-    """Guarda datos en bruto en el formato de raw_config["format"]. Retorna el sufijo timestamp.
+def save_raw(datos: pd.DataFrame, storage_config, now=None) -> str:
+    """Guarda datos en bruto usando output_formats[0] como formato. Retorna el sufijo timestamp.
     datos: DataFrame ya construido (string-first). El caller es responsable de construirlo.
     now: datetime opcional; si se omite se usa datetime.now(). Pasar el mismo valor que a save_data()
     garantiza coherencia de timestamps entre raw y output."""
 
-def load_output(filepath: Path, format: str, data_config: dict) -> pd.DataFrame:
-    """Lee un archivo de output y lo retorna como DataFrame usando la config correcta de DATA_CONFIG.
+def load_output(filepath: Path, format: str, storage_config: dict) -> pd.DataFrame:
+    """Lee un archivo de output y lo retorna como DataFrame usando format_config del job.
     Usada por el runner para preparar los DataFrames antes de pasarlos al consolidador."""
 
-def load_raw(suffix, raw_config, data_config) -> pd.DataFrame:
-    """Lee un raw existente y lo retorna como DataFrame sin transformar. Lee todo como str."""
+def load_raw(suffix, storage_config) -> pd.DataFrame:
+    """Lee un raw existente y lo retorna como DataFrame sin transformar. Lee todo como str.
+    El formato se deriva de storage_config["output_formats"][0]."""
 
-def cleanup_raw(raw_config) -> None:
+def cleanup_raw(storage_config) -> None:
     """Limpia archivos raw segun la politica de retencion configurada."""
 
 def build_filepath(storage_config, format, now=None) -> Path:
@@ -781,8 +786,6 @@ def parse_record(item, selectors, index) -> dict:
 | `TestLogConfig` | `test_global_settings_has_log_config` | Verifica que LOG_CONFIG existe |
 | `TestLogConfig` | `test_log_config_has_required_keys` | Valida claves requeridas |
 | `TestLogConfig` | `test_log_config_level_is_valid` | Valida nivel de logging |
-| `TestDataConfig` | `test_global_settings_has_data_config` | Verifica DATA_CONFIG con al menos un formato |
-| `TestDataConfig` | `test_data_config_formats_have_required_keys` | Valida que cada formato tiene configuracion |
 
 ### `tests/test_pipelines.py`
 
@@ -800,6 +803,7 @@ Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no
 | `TestPipelineYAML` | `test_consolidate_structure_if_present` | Valida estructura del bloque `consolidate` cuando esta presente |
 | `TestPipelineYAML` | `test_consolidate_module_exists_if_enabled` | El modulo consolidador existe en `src/consolidadores/` cuando `enabled: true` |
 | `TestPipelineYAML` | `test_consolidate_format_in_all_jobs_if_enabled` | Todos los jobs activos incluyen el `format` de consolidacion en su `output_formats` |
+| `TestPipelineYAML` | `test_consolidate_format_config_compatible` | Todos los jobs comparten la misma `format_config` para el formato de consolidacion |
 
 ### `tests/viviendas_adonde/test_viviendas_adonde.py`
 
@@ -811,15 +815,15 @@ Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no
 | `TestWebConfig` | `test_selectors_format` | Valida que cada selector es una cadena no vacia (XPath o CSS) |
 | `TestWebConfig` | `test_waits_are_positive_numbers` | Valida waits numericos |
 | `TestStorageConfig` | `test_settings_has_storage_config` | Verifica STORAGE_CONFIG existe |
-| `TestStorageConfig` | `test_storage_config_has_required_keys` | Valida claves requeridas |
+| `TestStorageConfig` | `test_storage_config_has_required_keys` | Valida las 7 claves requeridas (incluye `raw_folder`, `retention`, `format_config`) |
 | `TestStorageConfig` | `test_storage_config_naming_mode_is_valid` | Valida naming_mode |
 | `TestStorageConfig` | `test_storage_config_output_folder_is_valid_path` | Verifica que output_folder es una cadena no vacia |
+| `TestStorageConfig` | `test_storage_config_raw_folder_is_valid_path` | Verifica que raw_folder es una cadena no vacia |
+| `TestStorageConfig` | `test_storage_config_output_formats_are_valid` | Valida formatos de salida |
+| `TestStorageConfig` | `test_storage_config_retention_mode_is_valid` | Valida modo de retencion |
+| `TestStorageConfig` | `test_storage_config_format_config_covers_output_formats` | Verifica que format_config define una entrada por cada formato en output_formats |
 | `TestDriverConfig` | `test_settings_file_has_driver_config` | Verifica DRIVER_CONFIG existe |
 | `TestDriverConfig` | `test_driver_instance_created_with_settings_file` | Test de instancia del driver |
-| `TestRawConfig` | `test_settings_has_raw_config` | Verifica RAW_CONFIG existe |
-| `TestRawConfig` | `test_raw_config_has_required_keys` | Valida claves requeridas |
-| `TestRawConfig` | `test_raw_config_format_is_valid` | Verifica que el formato raw es uno de los soportados |
-| `TestRawConfig` | `test_raw_config_retention_mode_is_valid` | Valida modo de retencion |
 
 ### `tests/books_to_scrape/test_books_to_scrape.py`
 
@@ -832,16 +836,15 @@ Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no
 | `TestWebConfig` | `test_selectors_has_expected_fields` | Verifica campos Titulo, Precio y Rating |
 | `TestWebConfig` | `test_waits_are_positive_numbers` | Valida waits numericos |
 | `TestStorageConfig` | `test_settings_has_storage_config` | Verifica STORAGE_CONFIG existe |
-| `TestStorageConfig` | `test_storage_config_has_required_keys` | Valida claves requeridas |
+| `TestStorageConfig` | `test_storage_config_has_required_keys` | Valida las 7 claves requeridas (incluye `raw_folder`, `retention`, `format_config`) |
 | `TestStorageConfig` | `test_storage_config_naming_mode_is_valid` | Valida naming_mode |
 | `TestStorageConfig` | `test_storage_config_output_folder_is_valid_path` | Verifica que output_folder es una cadena no vacia |
+| `TestStorageConfig` | `test_storage_config_raw_folder_is_valid_path` | Verifica que raw_folder es una cadena no vacia |
 | `TestStorageConfig` | `test_storage_config_output_formats_are_valid` | Valida formatos de salida |
+| `TestStorageConfig` | `test_storage_config_retention_mode_is_valid` | Valida modo de retencion |
+| `TestStorageConfig` | `test_storage_config_format_config_covers_output_formats` | Verifica que format_config define una entrada por cada formato en output_formats |
 | `TestDriverConfig` | `test_settings_file_has_driver_config` | Verifica DRIVER_CONFIG existe |
 | `TestDriverConfig` | `test_driver_instance_created_with_settings_file` | Test de instancia del driver |
-| `TestRawConfig` | `test_settings_has_raw_config` | Verifica RAW_CONFIG existe |
-| `TestRawConfig` | `test_raw_config_has_required_keys` | Valida claves requeridas |
-| `TestRawConfig` | `test_raw_config_format_is_valid` | Verifica que el formato raw es uno de los soportados |
-| `TestRawConfig` | `test_raw_config_retention_mode_is_valid` | Valida modo de retencion |
 
 ## Dependencias
 

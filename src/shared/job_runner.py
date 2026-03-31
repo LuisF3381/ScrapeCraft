@@ -100,7 +100,7 @@ def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime, par
     df_raw = pd.DataFrame(datos).fillna("").astype(str)
     del datos
 
-    suffix = save_raw(df_raw, settings.RAW_CONFIG, global_settings.DATA_CONFIG, now)
+    suffix = save_raw(df_raw, settings.STORAGE_CONFIG, now)
     logger.info(f"Si el proceso falla, puedes reprocesar con: --reprocess {suffix}")
 
     if settings.SKIP_PROCESS:
@@ -132,11 +132,7 @@ def _run_validate(validate_fn, processed: list[dict]) -> None:
 def _run_reprocess(suffix: str, process_fn, settings) -> list[dict]:
     """Flujo reprocess: omite el scraping y reprocesa un raw existente."""
     logger.info(f"Iniciando reprocesamiento: sufijo {suffix}")
-    df = load_raw(
-        suffix=suffix,
-        raw_config=settings.RAW_CONFIG,
-        data_config=global_settings.DATA_CONFIG,
-    )
+    df = load_raw(suffix=suffix, storage_config=settings.STORAGE_CONFIG)
     return process_fn(df)
 
 
@@ -149,7 +145,7 @@ def _save_output(processed: list[dict], settings, now: datetime) -> dict[str, Pa
     output_formats = settings.STORAGE_CONFIG.get("output_formats", ["csv"])
     paths: dict[str, Path] = {}
     for formato in output_formats:
-        paths[formato] = save_data(processed, formato, global_settings.DATA_CONFIG, settings.STORAGE_CONFIG, now)
+        paths[formato] = save_data(processed, formato, settings.STORAGE_CONFIG, now)
     logger.info("Proceso finalizado")
     return paths
 
@@ -202,7 +198,7 @@ def run(args: argparse.Namespace, scrape_fn, process_fn, validate_fn, settings, 
         # cleanup_raw corre siempre (exito o fallo) para que la politica de retencion
         # se aplique aunque el job falle. En --reprocess no hay raw nuevo que gestionar.
         if not args.reprocess:
-            cleanup_raw(settings.RAW_CONFIG)
+            cleanup_raw(settings.STORAGE_CONFIG)
 
         if update_latest:
             logger_module.flush_log()

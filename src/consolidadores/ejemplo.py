@@ -10,8 +10,8 @@
 #   3. Implementa la logica en la funcion consolidate()
 #   4. Referencia el modulo en el pipeline YAML: consolidate.module: <nombre>
 #
-# Restriccion: todos los jobs del pipeline deben incluir el mismo formato
-# en su STORAGE_CONFIG['output_formats'] (definido en consolidate.format del YAML).
+# Restriccion: todos los jobs del pipeline deben tener la misma format_config
+# para el formato declarado en consolidate.format del YAML.
 # =============================================================================
 
 import pandas as pd
@@ -21,10 +21,21 @@ import pandas as pd
 # =========================================================================
 
 STORAGE_CONFIG = {
+    # --- Output ---
     "output_folder": "output/consolidados",
     "filename": "consolidado",
     "naming_mode": "date_suffix",      # overwrite | date_suffix | timestamp_suffix | date_folder
     "output_formats": ["csv"],         # formatos en los que se guarda el consolidado
+
+    # --- Configuracion de formatos ---
+    # Debe coincidir con la format_config de los jobs para el formato de consolidacion.
+    "format_config": {
+        "csv": {
+            "encoding": "utf-8",
+            "separator": ";",
+            "index": False
+        }
+    }
 }
 
 # =========================================================================

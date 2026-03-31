@@ -1,0 +1,162 @@
+[
+  {
+    "Numero":"1",
+    "Titulo":"A Light in the Attic",
+    "Precio":"£51.77",
+    "Rating":"star-rating Three",
+    "Precio_GBP":51.77,
+    "Rating_Numerico":3
+  },
+  {
+    "Numero":"2",
+    "Titulo":"Tipping the Velvet",
+    "Precio":"£53.74",
+    "Rating":"star-rating One",
+    "Precio_GBP":53.74,
+    "Rating_Numerico":1
+  },
+  {
+    "Numero":"3",
+    "Titulo":"Soumission",
+    "Precio":"£50.10",
+    "Rating":"star-rating One",
+    "Precio_GBP":50.1,
+    "Rating_Numerico":1
+  },
+  {
+    "Numero":"4",
+    "Titulo":"Sharp Objects",
+    "Precio":"£47.82",
+    "Rating":"star-rating Four",
+    "Precio_GBP":47.82,
+    "Rating_Numerico":4
+  },
+  {
+    "Numero":"5",
+    "Titulo":"Sapiens: A Brief History of Humankind",
+    "Precio":"£54.23",
+    "Rating":"star-rating Five",
+    "Precio_GBP":54.23,
+    "Rating_Numerico":5
+  },
+  {
+    "Numero":"6",
+    "Titulo":"The Requiem Red",
+    "Precio":"£22.65",
+    "Rating":"star-rating One",
+    "Precio_GBP":22.65,
+    "Rating_Numerico":1
+  },
+  {
+    "Numero":"7",
+    "Titulo":"The Dirty Little Secrets of Getting Your Dream Job",
+    "Precio":"£33.34",
+    "Rating":"star-rating Four",
+    "Precio_GBP":33.34,
+    "Rating_Numerico":4
+  },
+  {
+    "Numero":"8",
+    "Titulo":"The Coming Woman: A Novel Based on the Life of the Infamous Feminist, Victoria Woodhull",
+    "Precio":"£17.93",
+    "Rating":"star-rating Three",
+    "Precio_GBP":17.93,
+    "Rating_Numerico":3
+  },
+  {
+    "Numero":"9",
+    "Titulo":"The Boys in the Boat: Nine Americans and Their Epic Quest for Gold at the 1936 Berlin Olympics",
+    "Precio":"£22.60",
+    "Rating":"star-rating Four",
+    "Precio_GBP":22.6,
+    "Rating_Numerico":4
+  },
+  {
+    "Numero":"10",
+    "Titulo":"The Black Maria",
+    "Precio":"£52.15",
+    "Rating":"star-rating One",
+    "Precio_GBP":52.15,
+    "Rating_Numerico":1
+  },
+  {
+    "Numero":"11",
+    "Titulo":"Starving Hearts (Triangular Trade Trilogy, #1)",
+    "Precio":"£13.99",
+    "Rating":"star-rating Two",
+    "Precio_GBP":13.99,
+    "Rating_Numerico":2
+  },
+  {
+    "Numero":"12",
+    "Titulo":"Shakespeare's Sonnets",
+    "Precio":"£20.66",
+    "Rating":"star-rating Four",
+    "Precio_GBP":20.66,
+    "Rating_Numerico":4
+  },
+  {
+    "Numero":"13",
+    "Titulo":"Set Me Free",
+    "Precio":"£17.46",
+    "Rating":"star-rating Five",
+    "Precio_GBP":17.46,
+    "Rating_Numerico":5
+  },
+  {
+    "Numero":"14",
+    "Titulo":"Scott Pilgrim's Precious Little Life (Scott Pilgrim #1)",
+    "Precio":"£52.29",
+    "Rating":"star-rating Five",
+    "Precio_GBP":52.29,
+    "Rating_Numerico":5
+  },
+  {
+    "Numero":"15",
+    "Titulo":"Rip it Up and Start Again",
+    "Precio":"£35.02",
+    "Rating":"star-rating Five",
+    "Precio_GBP":35.02,
+    "Rating_Numerico":5
+  },
+  {
+    "Numero":"16",
+    "Titulo":"Our Band Could Be Your Life: Scenes from the American Indie Underground, 1981-1991",
+    "Precio":"£57.25",
+    "Rating":"star-rating Three",
+    "Precio_GBP":57.25,
+    "Rating_Numerico":3
+  },
+  {
+    "Numero":"17",
+    "Titulo":"Olio",
+    "Precio":"£23.88",
+    "Rating":"star-rating One",
+    "Precio_GBP":23.88,
+    "Rating_Numerico":1
+  },
+  {
+    "Numero":"18",
+    "Titulo":"Mesaerion: The Best Science Fiction Stories 1800-1849",
+    "Precio":"£37.59",
+    "Rating":"star-rating One",
+    "Precio_GBP":37.59,
+    "Rating_Numerico":1
+  },
+  {
+    "Numero":"19",
+    "Titulo":"Libertarianism for Beginners",
+    "Precio":"£51.33",
+    "Rating":"star-rating Two",
+    "Precio_GBP":51.33,
+    "Rating_Numerico":2
+  },
+  {
+    "Numero":"20",
+    "Titulo":"It's Only the Himalayas",
+    "Precio":"£45.17",
+    "Rating":"star-rating Two",
+    "Precio_GBP":45.17,
+    "Rating_Numerico":2
+  }
+]

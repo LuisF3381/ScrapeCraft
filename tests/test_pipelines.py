@@ -155,7 +155,6 @@ class TestPipelineYAML:
     def test_consolidate_format_in_all_jobs_if_enabled(self):
         """Verifica que todos los jobs del pipeline incluyan el formato de consolidacion."""
         import importlib
-        import sys
 
         for path in _get_pipeline_files():
             data = _load(path)
@@ -181,6 +180,41 @@ class TestPipelineYAML:
                     f"no incluye '{fmt}' en output_formats: {output_formats}"
                 )
             print(f"[OK] {path.name}: todos los jobs tienen format='{fmt}' en output_formats")
+
+    def test_consolidate_format_config_compatible(self):
+        """Verifica que todos los jobs en un pipeline consolidado tienen la misma
+        format_config para el formato de consolidacion."""
+        import importlib
+        from src.shared.storage import get_format_config
+
+        for path in _get_pipeline_files():
+            data = _load(path)
+            consolidate = data.get("consolidate")
+            if not consolidate or not consolidate.get("enabled"):
+                continue
+
+            fmt = consolidate.get("format")
+            if not fmt:
+                continue
+
+            configs: dict[str, dict] = {}
+            for job in data.get("jobs", []):
+                if not job.get("enabled", True):
+                    continue
+                job_name = job.get("name", "")
+                try:
+                    settings = importlib.import_module(f"src.{job_name}.settings")
+                except ModuleNotFoundError:
+                    continue
+                configs[job_name] = get_format_config(settings.STORAGE_CONFIG, fmt)
+
+            unique_configs = {str(sorted(c.items())) for c in configs.values()}
+            assert len(unique_configs) <= 1, (
+                f"{path.name}: los jobs tienen format_config distintas para '{fmt}':\n  "
+                + "\n  ".join(f"{j}: {c}" for j, c in configs.items())
+                + f"\nTodos los jobs deben compartir la misma format_config para '{fmt}'."
+            )
+            print(f"[OK] {path.name}: format_config compatible para '{fmt}' en todos los jobs")
 
 
 if __name__ == "__main__":
