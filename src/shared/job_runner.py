@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from src.shared.driver_config import create_driver
 from src.shared import logger as logger_module
-from src.shared.logger import setup_logger
+from src.shared.logger import setup_logger, get_current_log_path
 from src.shared.storage import save_data, save_raw, cleanup_raw, load_raw, clear_latest, copy_to_latest
 from config import global_settings
 
@@ -203,6 +203,6 @@ def run(args: argparse.Namespace, scrape_fn, process_fn, validate_fn, settings, 
         if update_latest:
             logger_module.flush_log()
             base_filename = settings.STORAGE_CONFIG.get("filename")
-            copy_to_latest(job_name, output_paths, logger_module.current_log_path, base_filename)
+            copy_to_latest(job_name, output_paths, get_current_log_path(), base_filename)
 
     return output_paths

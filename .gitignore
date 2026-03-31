@@ -4,11 +4,18 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+*.egg-info/
+dist/
+build/
 
 # Entorno virtual
 venv/
 env/
 .venv/
+.python-version
+
+# Variables de entorno — NUNCA commitear credenciales
+.env
 
 # Archivos generados
 output/*
@@ -22,14 +29,25 @@ downloaded_files/
 log/*
 !log/.gitkeep
 
+# Raw data y latest (datos scrapeados — no versionar)
+raw/
+latest/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*.code-workspace
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 .claude/settings.local.json
-/raw

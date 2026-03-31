@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.46.0] - 2026-03-31
+
+### Added
+- `.env.example`: plantilla de variables de entorno con todas las claves disponibles (`LOG_LEVEL`, `SCRAPER_PROXY`, `SCRAPER_USER_AGENT`) documentadas con ejemplos; se copia a `.env` y nunca se commitea
+- `python-dotenv` en `requirements.txt`: permite cargar variables desde `.env` antes de que cualquier modulo las lea
+- `src/shared/logger.py` `_ThreadLocalFileHandler`: handler personalizado que enruta cada `LogRecord` al archivo del hilo actual leyendo `_local.log_path` en cada `emit()`; permite que multiples jobs corran en paralelo con archivos de log separados sin interferencias entre hilos
+- `src/shared/logger.py` `get_current_log_path()`: funcion publica que retorna el `Path` del log activo en el hilo actual desde `threading.local()`; reemplaza el acceso directo a la variable de modulo `current_log_path` en todos los puntos de uso
+- `src/main.py` `_run_one_job(entry, is_consolidated)`: funcion que ejecuta un job individual y retorna `(job_name, output_paths, log_path, error)`; consolida la logica comun entre `_run_series()` y `_run_parallel()` eliminando la duplicacion previa
+- `src/main.py` `_run_parallel(job_entries, consolidate_config, pipeline_name)`: nuevo modo de ejecucion que lanza todos los jobs del pipeline de forma concurrente mediante `ThreadPoolExecutor(max_workers=len(jobs))`; con `consolidate` activo los jobs corren en paralelo y la consolidacion se ejecuta en serie al final, solo si todos los jobs fueron exitosos
+
+### Changed
+- `.gitignore`: agregadas entradas faltantes para un repositorio de scraping estandar: `.env` (credenciales), `raw/` y `latest/` (datos scrapeados), `.pytest_cache/`, `.coverage`, `htmlcov/` (artefactos de testing), `*.egg-info/`, `dist/`, `build/` (packaging), `*.code-workspace` y `desktop.ini`
+- `src/main.py`: agregado `from dotenv import load_dotenv` y `load_dotenv()` como primera instruccion ejecutable, antes de cualquier import de `src`; garantiza que `os.environ` este poblado cuando los modulos de settings lean sus variables; agregado `from concurrent.futures import ThreadPoolExecutor, as_completed`; `_load_pipeline()` amplia su retorno de `tuple[list, dict | None, str | None]` a `tuple[list, dict | None, str | None, bool]` incluyendo el flag `parallel`; `main()` enruta a `_run_parallel()` o `_run_series()` segun ese flag; `_run_series()` refactorizado para delegar la ejecucion individual a `_run_one_job()`, eliminando el bloque try/except/finally inline de cada job
+- `src/shared/logger.py`: `setup_logger()` instala `_ThreadLocalFileHandler` + `StreamHandler` en el logger `"src"` en la primera llamada y en llamadas sucesivas solo actualiza `_local.log_path`; el handler de archivo se crea bajo demanda en el primer `emit()` de cada hilo; `flush_log()` flushea y cierra el `FileHandler` del hilo actual liberando el descriptor de archivo, evitando leaks en pipelines con muchos jobs; eliminada la variable global `current_log_path` como punto de acceso directo — reemplazada por `get_current_log_path()`
+- `src/shared/job_runner.py`: reemplazado `logger_module.current_log_path` por `get_current_log_path()` en la llamada a `copy_to_latest()`; importada `get_current_log_path` desde `src.shared.logger`
+- `src/shared/storage.py` `_write_df()`: implementada escritura atomica — los datos se escriben primero en `<filepath>.tmp` y, solo si la escritura completa con exito, se renombra al nombre final mediante `Path.replace()`; si la escritura falla el `.tmp` se elimina y la excepcion se propaga; garantiza que los archivos de output nunca queden en estado corrupto o incompleto
+- `src/<job>/settings.py` (x2): `DRIVER_CONFIG["user_agent"]` y `DRIVER_CONFIG["proxy"]` pasan de literales `None` a `os.environ.get("SCRAPER_USER_AGENT") or None` y `os.environ.get("SCRAPER_PROXY") or None`; el `or None` garantiza que una variable definida como cadena vacia se trate como ausente
+- `config/global_settings.py`: `LOG_CONFIG["level"]` pasa de literal `"INFO"` a `os.environ.get("LOG_LEVEL", "INFO")`; agregado `import os`
+- `config/pipelines/diario.yaml`: nueva clave `parallel` documentada en el bloque de comentarios del encabezado; comentario en linea `# parallel: true` descomentable para activar el modo paralelo
+- `config/pipelines/diario_consolidado.yaml`: nueva clave `parallel` documentada en el encabezado; comentario en linea `# parallel: true` descomentable
+
 ## [0.45.0] - 2026-03-30
 
 ### Added

@@ -36,6 +36,9 @@ def get_format_config(storage_config: dict, format: str) -> dict:
 def _write_df(df: pd.DataFrame, filepath: Path, format: str, config: dict, stringify: bool = False) -> None:
     """
     Escribe un DataFrame en el formato indicado usando la config correspondiente.
+    Usa escritura atomica: escribe en un .tmp y hace rename al nombre final.
+    Garantiza que filepath nunca quede en estado corrupto/incompleto:
+    o existe con datos validos, o no existe.
 
     Args:
         stringify: Si True, convierte todas las columnas a string antes de escribir.
@@ -44,16 +47,28 @@ def _write_df(df: pd.DataFrame, filepath: Path, format: str, config: dict, strin
     """
     if stringify:
         df = df.fillna("").astype(str)
-    if format == "csv":
-        df.to_csv(filepath, index=config.get("index", False), encoding=config.get("encoding", "utf-8"), sep=config.get("separator", ","))
-    elif format == "json":
-        df.to_json(filepath, orient=config.get("orient", "records"), indent=config.get("indent", 2), force_ascii=config.get("force_ascii", False))
-    elif format == "xml":
-        df.to_xml(filepath, index=False, root_name=config.get("root", "registros"), row_name=config.get("row", "registro"), encoding=config.get("encoding", "utf-8"))
-    elif format == "xlsx":
-        df.to_excel(filepath, index=config.get("index", False), sheet_name=config.get("sheet_name", "Datos"))
-    else:
-        raise ValueError(f"Formato no soportado: {format}")
+
+    tmp_path = filepath.with_suffix(filepath.suffix + ".tmp")
+    try:
+        if format == "csv":
+            df.to_csv(tmp_path, index=config.get("index", False), encoding=config.get("encoding", "utf-8"), sep=config.get("separator", ","))
+        elif format == "json":
+            df.to_json(tmp_path, orient=config.get("orient", "records"), indent=config.get("indent", 2), force_ascii=config.get("force_ascii", False))
+        elif format == "xml":
+            df.to_xml(tmp_path, index=False, root_name=config.get("root", "registros"), row_name=config.get("row", "registro"), encoding=config.get("encoding", "utf-8"))
+        elif format == "xlsx":
+            df.to_excel(tmp_path, index=config.get("index", False), sheet_name=config.get("sheet_name", "Datos"))
+        else:
+            raise ValueError(f"Formato no soportado: {format}")
+
+        # Rename atomico: reemplaza filepath solo si la escritura fue completa.
+        # En Unix/Linux esta operacion es garantizadamente atomica (POSIX rename).
+        # En Windows es best-effort pero sigue siendo mucho mas seguro que escribir directo.
+        tmp_path.replace(filepath)
+
+    except Exception:
+        tmp_path.unlink(missing_ok=True)  # Limpiar el .tmp si algo fallo
+        raise
 
 
 def _read_df(filepath: Path, format: str, config: dict) -> pd.DataFrame:

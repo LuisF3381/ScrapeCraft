@@ -114,9 +114,9 @@ main.py (Dispatcher CLI)
 | Modulo | Responsabilidad |
 |--------|-----------------|
 | `job_runner.py` | Orquestacion ETL generica: `_run_full`, `_run_reprocess`, `_save_output`, `run` |
-| `storage.py` | Persistencia: raw, cleanup, construir rutas, exportar en multiples formatos, cargar outputs para consolidacion, gestion de `latest/` |
+| `storage.py` | Persistencia: raw, cleanup, construir rutas, exportar en multiples formatos con escritura atomica, cargar outputs para consolidacion, gestion de `latest/` |
 | `driver_config.py` | `create_driver(config)`: inicializa el navegador con opciones anti-deteccion |
-| `logger.py` | Sistema de logging dual (archivo + consola); expone `current_log_path` y `flush_log()` para la gestion de `latest/` |
+| `logger.py` | Sistema de logging dual (archivo + consola) con soporte thread-safe para ejecucion paralela; expone `get_current_log_path()` y `flush_log()` para la gestion de `latest/` |
 | `utils.py` | Funciones auxiliares de extraccion reutilizables: `safe_get_text`, `safe_get_attr` |
 
 ### Modulos consolidadores (`src/consolidadores/`)
@@ -169,6 +169,15 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+**4. Configurar variables de entorno (opcional)**
+
+```bash
+cp .env.example .env
+# Editar .env con los valores necesarios (proxy, user agent, nivel de log)
+```
+
+El archivo `.env` nunca se commitea (esta en `.gitignore`). Si no lo creas, el proyecto funciona con los valores por defecto.
+
 > Todos los comandos del proyecto deben ejecutarse desde la **raiz del repositorio** con el entorno virtual activo.
 
 ## Uso
@@ -189,6 +198,9 @@ python -m src.main --pipeline config/pipelines/diario.yaml
 
 # --- Ejecucion en serie con consolidacion ---
 python -m src.main --pipeline config/pipelines/diario_consolidado.yaml
+
+# --- Ejecucion en paralelo (requiere parallel: true en el YAML) ---
+python -m src.main --pipeline config/pipelines/diario.yaml
 ```
 
 ## Tests
@@ -223,14 +235,14 @@ pytest tests/ -v -s
 
 > El test `test_driver_instance_created_with_settings_file` abre Chrome en modo headless para verificar que el driver se inicializa correctamente. Requiere Chrome instalado.
 
-## Ejecucion en serie
+## Ejecucion de pipelines
 
 ScrapeCraft tiene dos modos de ejecucion mutuamente excluyentes:
 
 | Modo | Comando | Uso |
 |------|---------|-----|
 | Job individual | `--job nombre` | Un job, con `--reprocess` opcional |
-| Pipeline YAML | `--pipeline ruta.yaml` | Uno o mas jobs con params, `enabled` y consolidacion opcional |
+| Pipeline YAML | `--pipeline ruta.yaml` | Uno o mas jobs con params, `enabled`, consolidacion y modo paralelo opcionales |
 
 Para correr multiples jobs o pasar params, usa siempre `--pipeline`. El reprocesamiento (`--reprocess`) es una operacion manual exclusiva de `--job`.
 
@@ -242,6 +254,7 @@ Permite definir pipelines nombrados y reutilizables con params independientes po
 # config/pipelines/diario.yaml
 name: diario
 description: "Scraping diario de catalogo y viviendas"   # opcional
+# parallel: true   # Descomentar para lanzar todos los jobs a la vez
 
 jobs:
   - name: books_to_scrape
@@ -265,6 +278,23 @@ python -m src.main --pipeline config/pipelines/diario.yaml
 ```
 
 Los params se definen como dict YAML nativo — los tipos (`int`, `bool`, `float`, `str`) se preservan directamente en el scraper sin conversion manual.
+
+### Ejecucion en paralelo
+
+Agrega `parallel: true` al pipeline para lanzar todos los jobs al mismo tiempo. Util cuando los jobs son independientes entre si y quieres reducir el tiempo total de ejecucion.
+
+```yaml
+name: diario
+parallel: true   # ← esto es todo
+
+jobs:
+  - name: books_to_scrape
+  - name: viviendas_adonde
+```
+
+Con `consolidate` activo, los jobs corren en paralelo y la consolidacion siempre se ejecuta en serie al final, una vez que todos los jobs terminan. El comportamiento ante fallos es el mismo que en serie: si algun job falla, la consolidacion se omite.
+
+Cada job escribe en su propio archivo de log. El logging es thread-safe — los logs nunca se mezclan entre archivos aunque los jobs compartan tiempo de CPU.
 
 ### Consolidacion
 
@@ -329,20 +359,18 @@ El framework lee los outputs de cada job usando su propia `format_config` y entr
 
 Opcionalmente, el equipo de gobierno puede anadir una funcion `validate(df)` al consolidador siguiendo el mismo contrato que `src/<job>/validate.py`. Si esta presente, el framework la ejecuta despues de `consolidate()` y antes de guardar el output.
 
-### Comportamiento ante fallos en serie
+### Comportamiento ante fallos
 
-Si un job falla, el error se registra y la ejecucion continua con el siguiente. Al finalizar se muestra un resumen:
+Si un job falla, el error se registra y la ejecucion continua con el siguiente (serie) o termina ese hilo (paralelo). Al finalizar se muestra un resumen:
 
 ```
 ==================================================
 Serie finalizada: 2/2 jobs exitosos
 ```
 
-o en caso de error parcial:
-
 ```
 ==================================================
-Serie finalizada: 1/2 jobs exitosos
+Paralelo finalizado: 1/2 jobs exitosos
 Jobs con error: viviendas_adonde
 ```
 
@@ -435,9 +463,16 @@ Aplica a todos los jobs. Contiene unicamente `LOG_CONFIG`.
 
 ```python
 LOG_CONFIG = {
-    "log_folder": "log",    # Carpeta de logs (compartida entre todos los jobs)
-    "level": "INFO"         # Nivel: DEBUG, INFO, WARNING, ERROR
+    "log_folder": "log",                          # Carpeta de logs (compartida entre todos los jobs)
+    "level": os.environ.get("LOG_LEVEL", "INFO")  # Nivel: DEBUG, INFO, WARNING, ERROR
 }
+```
+
+El nivel de log se puede sobreescribir definiendo `LOG_LEVEL` en `.env` sin tocar el codigo:
+
+```
+# .env
+LOG_LEVEL=DEBUG
 ```
 
 Cada ejecucion genera su propio archivo de log: `log/<job>_YYYYMMDD_HHMMSS.log`. El timestamp completo garantiza que multiples ejecuciones del mismo dia no mezclen sus logs.
@@ -450,14 +485,24 @@ Especifica del job. Contiene `DRIVER_CONFIG`, `STORAGE_CONFIG` y `SKIP_PROCESS`.
 
 ```python
 DRIVER_CONFIG = {
-    "headless": False,      # Ejecutar sin interfaz grafica
-    "undetected": True,     # Modo anti-deteccion
-    "maximize": True,       # Maximizar ventana
-    "window_size": None,    # Tamano especifico: (1920, 1080)
-    "user_agent": None,     # User agent personalizado
-    "proxy": None           # Proxy: "ip:puerto"
+    "headless": False,                                       # Ejecutar sin interfaz grafica
+    "undetected": True,                                      # Modo anti-deteccion
+    "maximize": True,                                        # Maximizar ventana
+    "window_size": None,                                     # Tamano especifico: (1920, 1080)
+    "user_agent": os.environ.get("SCRAPER_USER_AGENT") or None,  # Leer de .env o None
+    "proxy":      os.environ.get("SCRAPER_PROXY")      or None,  # Leer de .env o None
 }
+```
 
+`user_agent` y `proxy` se leen desde `.env`. El `or None` garantiza que una variable definida como cadena vacia se trate como ausente:
+
+```
+# .env
+SCRAPER_PROXY=123.45.67.89:8080
+SCRAPER_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64)...
+```
+
+```python
 STORAGE_CONFIG = {
     # --- Output ---
     "output_folder": "output/viviendas_adonde",
@@ -727,6 +772,29 @@ def merge_logs_to_latest(folder: str, log_paths: list[Path]) -> None:
     Usado por pipelines con consolidacion para unificar los logs de todos los jobs."""
 ```
 
+### `src/shared/logger.py`
+
+```python
+def setup_logger(job_name: str, now: datetime, log_folder: str = "log", level: str = "INFO") -> None:
+    """
+    Configura el logger "src" para el job indicado. Thread-safe.
+    En modo secuencial actualiza _local.log_path al nuevo archivo.
+    En modo paralelo cada hilo mantiene su propio _local.log_path y escribe
+    en su propio archivo sin interferir con otros hilos.
+    """
+
+def get_current_log_path() -> Path | None:
+    """Retorna el Path del log activo en el hilo actual. None si no hay log configurado."""
+
+def flush_log() -> None:
+    """
+    Flushea y cierra el FileHandler del hilo actual.
+    Libera el descriptor de archivo — evita leaks en pipelines con muchos jobs.
+    Debe llamarse al finalizar cada job antes de copiar el log a latest/.
+    get_current_log_path() sigue retornando el path correcto tras flush_log().
+    """
+```
+
 ### `src/shared/utils.py`
 
 ```python
@@ -855,6 +923,7 @@ Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no
 | `pyyaml` | Lectura de archivos de configuracion YAML |
 | `pytest` | Framework de tests |
 | `openpyxl` | Exportacion a Excel (.xlsx) |
+| `python-dotenv` | Carga de variables de entorno desde `.env` |
 
 ## Licencia
 

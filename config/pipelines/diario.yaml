@@ -7,6 +7,9 @@
 # Campos a nivel de pipeline:
 #   name        (opcional): nombre descriptivo del pipeline
 #   description (opcional): descripcion del pipeline
+#   parallel    (opcional): true para ejecutar todos los jobs a la vez (default: false)
+#               Util cuando los jobs son independientes entre si.
+#               Con consolidacion: los jobs corren en paralelo y el merge al final en serie.
 #
 # Campos por job:
 #   name    (obligatorio): nombre del job (carpeta en src/)
@@ -30,6 +33,7 @@
 
 name: diario
 description: "Scraping diario de catalogo de libros y viviendas"
+# parallel: true   # Descomentar para ejecutar ambos jobs a la vez
 
 jobs:
   - name: books_to_scrape

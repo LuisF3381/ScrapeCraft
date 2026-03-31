@@ -2,6 +2,8 @@
 Configuracion especifica del job viviendas_adonde.
 Para configuracion global (logs) ver config/global_settings.py
 """
+import os
+
 # =========================================================================
 # ZONA DATA ENGINEER — configurar todos los bloques de este archivo
 # =========================================================================
@@ -25,10 +27,14 @@ DRIVER_CONFIG = {
     "window_size": None,  # Ejemplo: (1920, 1080)
 
     # User agent: User agent personalizado para simular diferentes navegadores
-    "user_agent": None,  # Ejemplo: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)..."
+    # Se puede definir en .env como SCRAPER_USER_AGENT
+    # Ejemplo: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)..."
+    "user_agent": os.environ.get("SCRAPER_USER_AGENT") or None,
 
     # Proxy: Servidor proxy en formato "ip:puerto"
-    "proxy": None  # Ejemplo: "123.45.67.89:8080"
+    # Se puede definir en .env como SCRAPER_PROXY
+    # Ejemplo: "123.45.67.89:8080"
+    "proxy": os.environ.get("SCRAPER_PROXY") or None,
 }
 
 # ============================================

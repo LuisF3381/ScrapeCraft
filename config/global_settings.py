@@ -2,6 +2,8 @@
 Configuracion global de ScrapeCraft.
 Aplica a todos los procesos independientemente del job que se ejecute.
 """
+import os
+
 # =========================================================================
 # ZONA DATA ENGINEER — modificar en casos excepcionales
 # (nivel de log, carpeta de logs)
@@ -18,5 +20,6 @@ LOG_CONFIG = {
     "log_folder": "log",
 
     # Nivel de logging: DEBUG, INFO, WARNING, ERROR
-    "level": "INFO"
+    # Se puede sobreescribir con la variable de entorno LOG_LEVEL en .env
+    "level": os.environ.get("LOG_LEVEL", "INFO")
 }

@@ -1,16 +1,17 @@
-2026-03-30 20:31:05,432 - INFO - Iniciando scraper...
-2026-03-30 20:31:05,432 - INFO - Parametros recibidos: {'pais': 'peru', 'max_paginas': 5, 'solo_nuevos': True}
-2026-03-30 20:31:05,435 - INFO - Configuracion cargada: https://www.adondevivir.com/inmuebles-en-alquiler.html
-2026-03-30 20:31:09,147 - INFO - Driver inicializado correctamente
-2026-03-30 20:31:15,123 - INFO - Pagina cargada correctamente
-2026-03-30 20:31:20,140 - INFO - Encontrados 27 elementos
-2026-03-30 20:31:24,896 - INFO - Raw guardado en raw\viviendas_adonde\viviendas_20260330_203105.csv (27 registros)
-2026-03-30 20:31:24,896 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260330_203105
-2026-03-30 20:31:24,902 - INFO - Procesamiento completado: 27 registros
-2026-03-30 20:31:24,903 - INFO - Ejecutando validaciones...
-2026-03-30 20:31:24,904 - INFO - Validacion exitosa
-2026-03-30 20:31:24,909 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260330.csv (27 registros)
-2026-03-30 20:31:24,913 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260330.json (27 registros)
-2026-03-30 20:31:24,914 - INFO - Proceso finalizado
-2026-03-30 20:31:24,932 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.csv
-2026-03-30 20:31:24,948 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.json
+2026-03-31 13:28:54,660 - INFO - Iniciando scraper...
+2026-03-31 13:28:54,662 - INFO - Parametros recibidos: {'pais': 'peru', 'max_paginas': 5, 'solo_nuevos': True}
+2026-03-31 13:28:54,669 - INFO - Configuracion cargada: https://www.adondevivir.com/inmuebles-en-alquiler.html
+2026-03-31 13:29:03,856 - INFO - Driver inicializado correctamente
+2026-03-31 13:29:09,870 - INFO - Pagina cargada correctamente
+2026-03-31 13:29:14,932 - INFO - Encontrados 27 elementos
+2026-03-31 13:29:21,033 - INFO - Raw guardado en raw\viviendas_adonde\viviendas_20260331_132854.csv (27 registros)
+2026-03-31 13:29:21,034 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260331_132854
+2026-03-31 13:29:21,039 - INFO - Procesamiento completado: 27 registros
+2026-03-31 13:29:21,040 - INFO - Ejecutando validaciones...
+2026-03-31 13:29:21,041 - INFO - Validacion exitosa
+2026-03-31 13:29:21,049 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260331.csv (27 registros)
+2026-03-31 13:29:21,054 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260331.json (27 registros)
+2026-03-31 13:29:21,056 - INFO - Proceso finalizado
+2026-03-31 13:29:21,058 - INFO - Raw eliminado: raw\viviendas_adonde\viviendas_20260330_203105.csv
+2026-03-31 13:29:21,074 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.csv
+2026-03-31 13:29:21,092 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.json

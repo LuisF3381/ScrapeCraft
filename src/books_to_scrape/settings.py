@@ -2,6 +2,8 @@
 Configuracion especifica del job books_to_scrape.
 Para configuracion global (logs) ver config/global_settings.py
 """
+import os
+
 # =========================================================================
 # ZONA DATA ENGINEER — configurar todos los bloques de este archivo
 # =========================================================================
@@ -24,10 +26,12 @@ DRIVER_CONFIG = {
     "window_size": None,
 
     # User agent: User agent personalizado para simular diferentes navegadores
-    "user_agent": None,
+    # Se puede definir en .env como SCRAPER_USER_AGENT
+    "user_agent": os.environ.get("SCRAPER_USER_AGENT") or None,
 
     # Proxy: Servidor proxy en formato "ip:puerto"
-    "proxy": None
+    # Se puede definir en .env como SCRAPER_PROXY
+    "proxy": os.environ.get("SCRAPER_PROXY") or None,
 }
 
 # ============================================

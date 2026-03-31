@@ -16,6 +16,7 @@
 
 name: diario_consolidado
 description: "Scraping diario con consolidacion final de todos los outputs"
+# parallel: true   # Descomentar para scraping en paralelo (merge siempre corre en serie al final)
 
 jobs:
   - name: books_to_scrape
