@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.47.0] - 2026-03-31
+
+### Changed
+- `src/<job>/validate.py` (x2): ZONA GOBIERNO DE DATOS ampliada con cinco categorias de validacion comentadas — minimo de registros, nulos/vacios en campos criticos, tipos de dato post-procesamiento, rango de valores y deduplicacion — cada una con el nivel de severidad recomendado documentado inline; se documenta en el encabezado de la zona el patron de dos niveles: `errors.append()` para bloquear el guardado y `logger.warning()` para registrar anomalias sin bloquear
+
 ## [0.46.0] - 2026-03-31
 
 ### Added

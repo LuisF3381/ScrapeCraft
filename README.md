@@ -626,19 +626,58 @@ No es necesario modificar `main.py`.
 
 Cada job requiere un archivo `validate.py` con la funcion `validate()`. El framework la llama despues de `process()` y antes de guardar cualquier output. Si la validacion falla, el job termina con error, no se escribe ningun archivo de output y `latest/` recibe unicamente el log para trazabilidad.
 
+### Dos niveles de severidad
+
+La zona soporta dos niveles de severidad para que el equipo de gobierno distinga entre problemas que invalidan el dataset y anomalias puntuales que conviene registrar pero no bloquean:
+
+| Mecanismo | Efecto | Cuando usarlo |
+|-----------|--------|---------------|
+| `errors.append(msg)` | Bloquea el guardado, el job termina con error | El problema hace que el dataset sea inutil o incorrecto (ej: 0 registros, campo clave nulo, tipo de dato incorrecto tras el procesamiento) |
+| `logger.warning(msg)` | Solo registra en el log, el job continua | Anomalia puntual aceptable que no invalida el dataset completo (ej: pocos nulos en campo no critico, valores en rango inusual) |
+
 ```python
 def validate(df: pd.DataFrame) -> list[str]:
     errors: list[str] = []
 
     # =========================================================================
     # ZONA GOBIERNO DE DATOS
+    #
+    # Dos niveles de severidad:
+    #   errors.append(...)  → bloquea el guardado
+    #   logger.warning(...) → solo registra, no bloquea
     # =========================================================================
 
-    # Ejemplo de validaciones:
-    # if len(df) < 10:
-    #     errors.append(f"Se esperaban al menos 10 registros, se obtuvieron {len(df)}")
-    # if df["Precio"].isna().any():
-    #     errors.append("Hay registros con Precio nulo")
+    # 1. Minimo de registros
+    # MIN_REGISTROS = 10
+    # if len(df) < MIN_REGISTROS:
+    #     errors.append(f"Se esperaban al menos {MIN_REGISTROS} registros, se obtuvieron {len(df)}.")
+
+    # 2. Nulos en campos criticos (clave de negocio) → errors; en campos importantes → warning
+    # CAMPOS_CRITICOS = ["Titulo"]
+    # for campo in CAMPOS_CRITICOS:
+    #     if campo in df.columns:
+    #         nulos = df[campo].isna() | (df[campo].astype(str).str.strip() == "")
+    #         if int(nulos.sum()) > 0:
+    #             errors.append(f"Campo critico '{campo}' tiene {int(nulos.sum())} valor(es) nulo(s).")
+
+    # 3. Tipos de dato: si process() debia convertir a numerico y no lo logro → error
+    # if "Precio" in df.columns:
+    #     no_numericos = pd.to_numeric(df["Precio"], errors="coerce").isna() & df["Precio"].notna()
+    #     if int(no_numericos.sum()) > 0:
+    #         errors.append(f"'Precio' tiene {int(no_numericos.sum())} valor(es) no numericos.")
+
+    # 4. Rango de valores: anomalias puntuales → warning; sistematicas → errors
+    # if "Precio" in df.columns:
+    #     n = int((pd.to_numeric(df["Precio"], errors="coerce") <= 0).sum())
+    #     if n > 0:
+    #         logger.warning(f"'Precio' tiene {n} valor(es) <= 0.")
+
+    # 5. Deduplicacion: red de seguridad sobre lo que process() ya limpio
+    #    Nota: la eliminacion de duplicados va en process.py, no aqui.
+    # CLAVE_UNICA = ["Titulo"]
+    # n = int(df.duplicated(subset=CLAVE_UNICA, keep=False).sum())
+    # if n > 0:
+    #     errors.append(f"Se encontraron {n} registro(s) duplicados por clave {CLAVE_UNICA}.")
 
     # =========================================================================
     # FIN ZONA GOBIERNO DE DATOS
@@ -649,8 +688,8 @@ def validate(df: pd.DataFrame) -> list[str]:
 
 **Contrato:**
 - Recibe el DataFrame procesado por `process()` con los tipos ya asignados
-- Retorna `list[str]`: lista vacia = exito; lista con mensajes = fallo
-- Es de **solo lectura** — no debe modificar el DataFrame
+- Retorna `list[str]`: lista vacia = exito; lista con mensajes = fallo y guardado bloqueado
+- Es de **solo lectura** — no debe modificar el DataFrame (las correcciones van en `process.py`)
 - No recibe `params`; si necesita contexto externo debe leerlo desde constantes o archivos de configuracion propios
 
 ### Validacion en consolidadores
