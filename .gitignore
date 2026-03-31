@@ -16,6 +16,7 @@ env/
 
 # Variables de entorno — NUNCA commitear credenciales
 .env
+.env.example
 
 # Archivos generados
 output/*
