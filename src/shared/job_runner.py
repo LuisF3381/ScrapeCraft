@@ -13,6 +13,12 @@ from config import global_settings
 
 logger = logging.getLogger(__name__)
 
+
+def _s(t0: datetime) -> str:
+    """Retorna el tiempo transcurrido desde t0 como cadena legible (ej: '3.21s')."""
+    return f"{(datetime.now() - t0).total_seconds():.2f}s"
+
+
 # ---------------------------------------------------------------------------
 # FLUJO ETL — vision general
 #
@@ -88,10 +94,12 @@ def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime, par
     web_config = load_web_config(job_name)
     driver = create_driver(settings.DRIVER_CONFIG)
 
+    t_scrape = datetime.now()
     try:
         datos = scrape_fn(driver, web_config, params)
     finally:
         driver.quit()
+    logger.info(f"[scrape]   {_s(t_scrape)}")
 
     if not datos:
         raise RuntimeError("El scraper no retorno datos. Verifica la URL, los selectores o posible bloqueo.")
@@ -108,7 +116,9 @@ def _run_full(scrape_fn, process_fn, settings, job_name: str, now: datetime, par
         logger.info("skip_process=True: omitiendo process.py, usando raw directamente")
         processed = df_raw.to_dict(orient="records")
     else:
+        t_process = datetime.now()
         processed = process_fn(df_raw)
+        logger.info(f"[process]  {_s(t_process)}")
 
     return processed
 
@@ -121,20 +131,26 @@ def _run_validate(validate_fn, processed: list[dict]) -> None:
         processed:   Datos procesados (list[dict]) retornados por process() o _run_full().
     """
     logger.info("Ejecutando validaciones...")
+    t_validate = datetime.now()
     errors = validate_fn(pd.DataFrame(processed))
     if errors:
         errors_str = "\n  - ".join(errors)
         raise ValueError(
             f"Validacion fallida ({len(errors)} error(es)):\n  - {errors_str}"
         )
-    logger.info("Validacion exitosa")
+    logger.info(f"[validate] {_s(t_validate)} | OK")
 
 
 def _run_reprocess(suffix: str, process_fn, settings) -> list[dict]:
     """Flujo reprocess: omite el scraping y reprocesa un raw existente."""
     logger.info(f"Iniciando reprocesamiento: sufijo {suffix}")
+    t_load = datetime.now()
     df = load_raw(suffix=suffix, storage_config=settings.STORAGE_CONFIG)
-    return process_fn(df)
+    logger.info(f"[load_raw] {_s(t_load)}")
+    t_process = datetime.now()
+    processed = process_fn(df)
+    logger.info(f"[process]  {_s(t_process)}")
+    return processed
 
 
 def _save_output(processed: list[dict], settings, now: datetime) -> dict[str, Path]:
@@ -145,9 +161,10 @@ def _save_output(processed: list[dict], settings, now: datetime) -> dict[str, Pa
     """
     output_formats = settings.STORAGE_CONFIG.get("output_formats", ["csv"])
     paths: dict[str, Path] = {}
+    t_save = datetime.now()
     for formato in output_formats:
         paths[formato] = save_data(processed, formato, settings.STORAGE_CONFIG, now)
-    logger.info("Proceso finalizado")
+    logger.info(f"[save]     {_s(t_save)} | {len(output_formats)} formato(s)")
     return paths
 
 

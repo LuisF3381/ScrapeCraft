@@ -1,17 +1,18 @@
-2026-03-31 21:25:18,395 - INFO - Iniciando scraper...
-2026-03-31 21:25:18,396 - INFO - Parametros recibidos: {'categoria': 'mystery', 'pagina': 1}
-2026-03-31 21:25:18,399 - INFO - Configuracion cargada: http://books.toscrape.com/
-2026-03-31 21:25:20,144 - INFO - Driver inicializado correctamente
-2026-03-31 21:25:21,129 - INFO - Pagina cargada correctamente
-2026-03-31 21:25:22,148 - INFO - Encontrados 20 libros
-2026-03-31 21:25:25,387 - INFO - Raw guardado en raw\books_to_scrape\books_20260331_212518.csv (20 registros)
-2026-03-31 21:25:25,388 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260331_212518
-2026-03-31 21:25:25,399 - INFO - Procesamiento completado: 20 registros
-2026-03-31 21:25:25,402 - INFO - Ejecutando validaciones...
-2026-03-31 21:25:25,403 - INFO - Validacion exitosa
-2026-03-31 21:25:25,411 - INFO - Datos guardados en output\books_to_scrape\books_20260331.csv (20 registros)
-2026-03-31 21:25:25,415 - INFO - Datos guardados en output\books_to_scrape\books_20260331.json (20 registros)
-2026-03-31 21:25:25,415 - INFO - Proceso finalizado
-2026-03-31 21:25:25,418 - INFO - Raw eliminado: raw\books_to_scrape\books_20260331_132724.csv
-2026-03-31 21:25:25,425 - INFO - Latest actualizado: latest\books_to_scrape\books.csv
-2026-03-31 21:25:25,433 - INFO - Latest actualizado: latest\books_to_scrape\books.json
+2026-03-31 21:37:04,392 - INFO - Iniciando scraper...
+2026-03-31 21:37:04,396 - INFO - Configuracion cargada: http://books.toscrape.com/
+2026-03-31 21:37:06,178 - INFO - Driver inicializado correctamente
+2026-03-31 21:37:07,420 - INFO - Pagina cargada correctamente
+2026-03-31 21:37:08,435 - INFO - Encontrados 20 libros
+2026-03-31 21:37:11,680 - INFO - [scrape]   5.45s
+2026-03-31 21:37:11,690 - INFO - Raw guardado en raw\books_to_scrape\books_20260331_213704.csv (20 registros)
+2026-03-31 21:37:11,690 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260331_213704
+2026-03-31 21:37:11,698 - INFO - Procesamiento completado: 20 registros
+2026-03-31 21:37:11,701 - INFO - [process]  0.01s
+2026-03-31 21:37:11,701 - INFO - Ejecutando validaciones...
+2026-03-31 21:37:11,702 - INFO - [validate] 0.00s | OK
+2026-03-31 21:37:11,707 - INFO - Datos guardados en output\books_to_scrape\books_20260331.csv (20 registros)
+2026-03-31 21:37:11,712 - INFO - Datos guardados en output\books_to_scrape\books_20260331.json (20 registros)
+2026-03-31 21:37:11,712 - INFO - [save]     0.01s | 2 formato(s)
+2026-03-31 21:37:11,714 - INFO - Raw eliminado: raw\books_to_scrape\books_20260331_132803.csv
+2026-03-31 21:37:11,721 - INFO - Latest actualizado: latest\books_to_scrape\books.csv
+2026-03-31 21:37:11,726 - INFO - Latest actualizado: latest\books_to_scrape\books.json

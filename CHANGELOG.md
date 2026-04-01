@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.0] - 2026-03-31
+
+### Added
+- `src/shared/job_runner.py` `_s(t0)`: helper privado que retorna el tiempo transcurrido desde `t0` como cadena legible (ej: `"3.21s"`)
+- `src/shared/job_runner.py`: log de tiempos de ejecucion por etapa en todos los flujos — `[scrape]`, `[process]`, `[validate]`, `[save]` en flujo completo; `[load_raw]`, `[process]` en flujo reprocess; el formato `[etapa]  Xs` permite identificar de un vistazo donde se concentra el tiempo en cada run
+
 ## [0.49.0] - 2026-03-31
 
 ### Added

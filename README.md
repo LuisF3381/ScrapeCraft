@@ -116,7 +116,7 @@ main.py (Dispatcher CLI)
 
 | Modulo | Responsabilidad |
 |--------|-----------------|
-| `job_runner.py` | Orquestacion ETL generica: `_run_full`, `_run_reprocess`, `_save_output`, `run` |
+| `job_runner.py` | Orquestacion ETL generica: `_run_full`, `_run_reprocess`, `_save_output`, `run`; registra el tiempo de cada etapa (`[scrape]`, `[process]`, `[validate]`, `[save]`) en el log |
 | `storage.py` | Persistencia: raw, cleanup, construir rutas, exportar en multiples formatos con escritura atomica, cargar outputs para consolidacion, gestion de `latest/` |
 | `driver_config.py` | `create_driver(config)`: inicializa el navegador con opciones anti-deteccion |
 | `logger.py` | Sistema de logging dual (archivo + consola) con soporte thread-safe para ejecucion paralela; expone `get_current_log_path()` y `flush_log()` para la gestion de `latest/` |
@@ -793,6 +793,7 @@ def run(args, scrape_fn, process_fn, validate_fn, settings, job_name: str, param
     Flujo completo:    scrape → save_raw → normalize_in_memory → process(df) → validate(df) → cleanup_raw → save_data → copy_to_latest
     Sin proceso:       scrape → save_raw → normalize_in_memory → validate(df) → cleanup_raw → save_data → copy_to_latest
     Flujo reprocess:   load_raw → process(df) → validate(df) → save_data → copy_to_latest
+    En todos los flujos se loguea el tiempo de cada etapa: [scrape] Xs | [process] Xs | [validate] Xs | OK | [save] Xs | N formato(s)
     """
 ```
 
