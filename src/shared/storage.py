@@ -55,7 +55,7 @@ def _write_df(df: pd.DataFrame, filepath: Path, format: str, config: dict, strin
         elif format == "json":
             df.to_json(tmp_path, orient=config.get("orient", "records"), indent=config.get("indent", 2), force_ascii=config.get("force_ascii", False))
         elif format == "xml":
-            df.to_xml(tmp_path, index=False, root_name=config.get("root", "registros"), row_name=config.get("row", "registro"), encoding=config.get("encoding", "utf-8"))
+            df.to_xml(tmp_path, index=False, root_name=config.get("root", "registros"), row_name=config.get("row", "registro"), encoding=config.get("encoding", "utf-8"), parser="etree")
         elif format == "xlsx":
             df.to_excel(tmp_path, index=config.get("index", False), sheet_name=config.get("sheet_name", "Datos"))
         else:
@@ -80,7 +80,7 @@ def _read_df(filepath: Path, format: str, config: dict) -> pd.DataFrame:
         # El .astype(str) posterior es quien garantiza la conversion a string.
         df = pd.read_json(filepath, orient=config.get("orient", "records")).astype(str)
     elif format == "xml":
-        df = pd.read_xml(filepath, dtype=str, encoding=config.get("encoding", "utf-8"))
+        df = pd.read_xml(filepath, dtype=str, encoding=config.get("encoding", "utf-8"), parser="etree")
     elif format == "xlsx":
         df = pd.read_excel(filepath, dtype=str)
     else:

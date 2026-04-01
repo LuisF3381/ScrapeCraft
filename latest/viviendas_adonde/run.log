@@ -1,17 +1,17 @@
-2026-03-31 13:28:54,660 - INFO - Iniciando scraper...
-2026-03-31 13:28:54,662 - INFO - Parametros recibidos: {'pais': 'peru', 'max_paginas': 5, 'solo_nuevos': True}
-2026-03-31 13:28:54,669 - INFO - Configuracion cargada: https://www.adondevivir.com/inmuebles-en-alquiler.html
-2026-03-31 13:29:03,856 - INFO - Driver inicializado correctamente
-2026-03-31 13:29:09,870 - INFO - Pagina cargada correctamente
-2026-03-31 13:29:14,932 - INFO - Encontrados 27 elementos
-2026-03-31 13:29:21,033 - INFO - Raw guardado en raw\viviendas_adonde\viviendas_20260331_132854.csv (27 registros)
-2026-03-31 13:29:21,034 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260331_132854
-2026-03-31 13:29:21,039 - INFO - Procesamiento completado: 27 registros
-2026-03-31 13:29:21,040 - INFO - Ejecutando validaciones...
-2026-03-31 13:29:21,041 - INFO - Validacion exitosa
-2026-03-31 13:29:21,049 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260331.csv (27 registros)
-2026-03-31 13:29:21,054 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260331.json (27 registros)
-2026-03-31 13:29:21,056 - INFO - Proceso finalizado
-2026-03-31 13:29:21,058 - INFO - Raw eliminado: raw\viviendas_adonde\viviendas_20260330_203105.csv
-2026-03-31 13:29:21,074 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.csv
-2026-03-31 13:29:21,092 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.json
+2026-03-31 21:25:25,502 - INFO - Iniciando scraper...
+2026-03-31 21:25:25,504 - INFO - Parametros recibidos: {'pais': 'peru', 'max_paginas': 5, 'solo_nuevos': True}
+2026-03-31 21:25:25,517 - INFO - Configuracion cargada: https://www.adondevivir.com/inmuebles-en-alquiler.html
+2026-03-31 21:25:29,206 - INFO - Driver inicializado correctamente
+2026-03-31 21:25:35,260 - INFO - Pagina cargada correctamente
+2026-03-31 21:25:40,277 - INFO - Encontrados 27 elementos
+2026-03-31 21:25:45,224 - INFO - Raw guardado en raw\viviendas_adonde\viviendas_20260331_212525.csv (27 registros)
+2026-03-31 21:25:45,225 - INFO - Si el proceso falla, puedes reprocesar con: --reprocess 20260331_212525
+2026-03-31 21:25:45,228 - INFO - Procesamiento completado: 27 registros
+2026-03-31 21:25:45,230 - INFO - Ejecutando validaciones...
+2026-03-31 21:25:45,230 - INFO - Validacion exitosa
+2026-03-31 21:25:45,237 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260331.csv (27 registros)
+2026-03-31 21:25:45,242 - INFO - Datos guardados en output\viviendas_adonde\viviendas_20260331.json (27 registros)
+2026-03-31 21:25:45,242 - INFO - Proceso finalizado
+2026-03-31 21:25:45,243 - INFO - Raw eliminado: raw\viviendas_adonde\viviendas_20260330_212849.csv
+2026-03-31 21:25:45,258 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.csv
+2026-03-31 21:25:45,275 - INFO - Latest actualizado: latest\viviendas_adonde\viviendas.json

@@ -52,6 +52,9 @@ ScrapeCraft/
 │   │   └── test_viviendas_adonde.py
 │   └── books_to_scrape/
 │       └── test_books_to_scrape.py
+├── run_history/                       # Historial de runs por job (JSON Lines, generado en ejecucion)
+│   ├── books_to_scrape.jsonl
+│   └── viviendas_adonde.jsonl
 ├── log/                               # Logs de ejecucion (compartido)
 ├── output/
 │   ├── consolidados/                  # Output de consolidaciones
@@ -117,6 +120,7 @@ main.py (Dispatcher CLI)
 | `storage.py` | Persistencia: raw, cleanup, construir rutas, exportar en multiples formatos con escritura atomica, cargar outputs para consolidacion, gestion de `latest/` |
 | `driver_config.py` | `create_driver(config)`: inicializa el navegador con opciones anti-deteccion |
 | `logger.py` | Sistema de logging dual (archivo + consola) con soporte thread-safe para ejecucion paralela; expone `get_current_log_path()` y `flush_log()` para la gestion de `latest/` |
+| `run_history.py` | `record_run()`: registra el resultado de cada ejecucion en `run_history/<job>.jsonl`; permite auditar runs pasados, consultar el sufijo de un raw fallido y detectar jobs con fallos repetidos |
 | `utils.py` | Funciones auxiliares de extraccion reutilizables: `safe_get_text`, `safe_get_attr` |
 
 ### Modulos consolidadores (`src/consolidadores/`)
@@ -712,6 +716,34 @@ def validate(df: pd.DataFrame) -> list[str]:
 | Job en pipeline falla validacion | Mismo que fallo normal de job: pipeline continua, consolidacion omitida si hay fallos |
 | Consolidador falla validacion | Error logueado, no se guarda el consolidado, `latest/<pipeline>/` recibe solo logs de los jobs |
 
+## Historial de runs (`run_history/`)
+
+Cada vez que un job termina (con exito o con error) el framework registra automaticamente el resultado en `run_history/<job_name>.jsonl`. El formato es **JSON Lines**: una linea por ejecucion, cada linea es un objeto JSON valido.
+
+```jsonl
+{"job": "books_to_scrape", "started_at": "2026-03-31T14:30:52", "mode": "scrape", "status": "success", "raw_suffix": "20260331_143052", "error": null, "duration_s": 18.4, "outputs": ["output/books_to_scrape/books_20260331.csv"]}
+{"job": "books_to_scrape", "started_at": "2026-03-31T20:00:01", "mode": "scrape", "status": "failed", "raw_suffix": null, "error": "El scraper no retorno datos.", "duration_s": 5.1, "outputs": []}
+```
+
+| Campo | Descripcion |
+|-------|-------------|
+| `job` | Nombre del job |
+| `started_at` | Timestamp de inicio (ISO 8601) |
+| `mode` | `"scrape"` para ejecucion normal, `"reprocess"` para `--reprocess` |
+| `status` | `"success"` o `"failed"` |
+| `raw_suffix` | Sufijo del archivo raw generado o reprocesado; `null` si el job fallo antes de generarlo |
+| `error` | Mensaje de la excepcion capturada; `null` si fue exitoso |
+| `duration_s` | Duracion total del run en segundos |
+| `outputs` | Lista de rutas de los archivos de output generados; vacia si fallo |
+
+La carpeta `run_history/` esta en `.gitignore` — es datos de runtime de cada instancia, no codigo.
+
+Si un run fallo y quieres reprocesar el raw correspondiente, usa el `raw_suffix` del registro:
+
+```bash
+python -m src.main --job books_to_scrape --reprocess 20260331_143052
+```
+
 ## Procesamiento (`src/<job>/process.py`)
 
 Implementa tu logica de transformacion dentro de `process()`. Recibe un DataFrame con todas las columnas como `str` — convierte los tipos que necesites explicitamente:
@@ -954,6 +986,8 @@ Valida automaticamente todos los `.yaml` presentes en `config/pipelines/` — no
 | `TestDriverConfig` | `test_driver_instance_created_with_settings_file` | Test de instancia del driver |
 
 ## Dependencias
+
+Las versiones estan pinadas con el operador `~=` (compatible release): permite actualizaciones de patch pero bloquea saltos de version mayor que puedan romper la API.
 
 | Paquete | Uso |
 |---|---|

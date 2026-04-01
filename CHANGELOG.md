@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.49.0] - 2026-03-31
+
+### Added
+- `src/shared/run_history.py` `record_run()`: nueva funcion que registra el resultado de cada ejecucion en `run_history/<job_name>.jsonl` (formato JSON Lines, una linea por run); captura `job`, `started_at`, `mode` ("scrape" | "reprocess"), `status` ("success" | "failed"), `raw_suffix`, `error`, `duration_s` y `outputs`; si el archivo no se puede escribir degrada a `logger.warning()` sin abortar el job
+- `run_history/` en `.gitignore`: la carpeta es datos de runtime especificos de cada instancia y no debe versionarse
+
+### Changed
+- `src/shared/job_runner.py` `run()`: integra `run_history.record_run()` en el bloque `finally` para garantizar que se registre tanto el exito como el fallo; rastrea `_status` y `_error` en el flujo try/except; el `raw_suffix` se deriva de `now` en modo scrape, de `args.reprocess` en modo reprocess, y es `None` si el job fallo antes de generar el raw
+
+## [0.48.0] - 2026-03-31
+
+### Fixed
+- `src/shared/storage.py` `_write_df()` y `_read_df()`: agregado `parser="etree"` a las llamadas `df.to_xml()` y `pd.read_xml()`; en pandas 3.0 el parser por defecto cambio a `lxml` que no es una dependencia del proyecto, provocando `ImportError` al usar el formato XML en entornos sin `lxml` instalado
+
+### Changed
+- `requirements.txt`: versiones pinadas con el operador `~=` (compatible release) para los 6 paquetes del proyecto — `seleniumbase~=4.46`, `pandas~=3.0`, `pyyaml~=6.0`, `pytest~=9.0`, `openpyxl~=3.1`, `python-dotenv~=1.2`; permite actualizaciones de patch pero bloquea saltos de version mayor que puedan romper la API
+
 ## [0.47.0] - 2026-03-31
 
 ### Changed

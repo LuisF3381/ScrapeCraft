@@ -8,6 +8,7 @@ from src.shared.driver_config import create_driver
 from src.shared import logger as logger_module
 from src.shared.logger import setup_logger, get_current_log_path
 from src.shared.storage import save_data, save_raw, cleanup_raw, load_raw, clear_latest, copy_to_latest
+from src.shared import run_history
 from config import global_settings
 
 logger = logging.getLogger(__name__)
@@ -181,6 +182,8 @@ def run(args: argparse.Namespace, scrape_fn, process_fn, validate_fn, settings, 
     params = params or {}
 
     output_paths: dict[str, Path] = {}
+    _status = "failed"
+    _error: str | None = None
     try:
         if args.reprocess:
             processed = _run_reprocess(args.reprocess, process_fn, settings)
@@ -189,8 +192,10 @@ def run(args: argparse.Namespace, scrape_fn, process_fn, validate_fn, settings, 
 
         _run_validate(validate_fn, processed)
         output_paths = _save_output(processed, settings, now)
+        _status = "success"
 
     except Exception as e:
+        _error = str(e)
         logger.error(f"Error durante la ejecucion: {e}", exc_info=True)
         raise
 
@@ -204,5 +209,16 @@ def run(args: argparse.Namespace, scrape_fn, process_fn, validate_fn, settings, 
             logger_module.flush_log()
             base_filename = settings.STORAGE_CONFIG.get("filename")
             copy_to_latest(job_name, output_paths, get_current_log_path(), base_filename)
+
+        run_history.record_run(
+            job_name=job_name,
+            started_at=now,
+            mode="reprocess" if args.reprocess else "scrape",
+            status=_status,
+            raw_suffix=args.reprocess if args.reprocess else (now.strftime("%Y%m%d_%H%M%S") if _status == "success" else None),
+            error=_error,
+            duration_s=(datetime.now() - now).total_seconds(),
+            outputs=[str(p) for p in output_paths.values()],
+        )
 
     return output_paths
