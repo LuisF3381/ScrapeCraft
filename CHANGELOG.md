@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.52.0] - 2026-04-01
+
+### Added
+- `src/main.py` `_matches_schedule(schedule, today)`: nueva funcion que evalua si hoy coincide con el schedule configurado por job; reconoce `day_of_month` (1-31) y `day_of_week` (0=lunes...6=domingo), combinables con AND logico; retorna `True` si no hay schedule definido (ejecutar siempre)
+- `config/pipelines/diario.yaml` y `diario_consolidado.yaml`: campo `schedule` documentado en el encabezado con ejemplo comentado por job
+
+### Changed
+- `src/main.py` `_load_pipeline()`: el campo `schedule` de cada job entry se incluye en el dict de entrada al cargar el pipeline YAML
+- `src/main.py` `_run_series()`: antes de ejecutar cada job evalua `_matches_schedule()`; los jobs que no coinciden con su schedule se omiten con log `"Job 'X' omitido: schedule=... hoy=DD/MM/YYYY"` y se acumulan en la lista `skipped`; el resumen final reporta jobs ejecutados, fallidos y omitidos por separado
+- `src/main.py` `_run_parallel()`: filtra los jobs activos antes de lanzar el `ThreadPoolExecutor`; los jobs omitidos por schedule se excluyen de la cola de hilos; si todos los jobs son omitidos retorna inmediatamente sin crear el executor
+- `src/main.py` `_run_consolidation()`: la firma cambia de `job_outputs: dict[str, Path]` a `job_dataframes: dict[str, pd.DataFrame | None]`; la carga de DataFrames desde disco se delega a los callers (`_run_series` y `_run_parallel`), que construyen el mapa con DataFrames reales para jobs exitosos y `None` para jobs omitidos por schedule
+- `src/main.py` `_run_series()` y `_run_parallel()`: la consolidacion ya **no** se bloquea cuando hay jobs omitidos por schedule — solo se bloquea ante jobs fallidos; los jobs omitidos se pasan al consolidador como `None` para que el data engineer decida como tratarlos (ignorar la fuente, consolidar parcialmente, etc.)
+- `src/consolidadores/ejemplo.py` `consolidate()`: firma actualizada a `dict[str, pd.DataFrame | None]`; el cuerpo muestra el patron de guardia `if df is not None` por cada fuente antes de concatenar
+
 ## [0.51.0] - 2026-03-31
 
 ### Changed

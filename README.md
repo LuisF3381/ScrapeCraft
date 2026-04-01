@@ -246,7 +246,7 @@ ScrapeCraft tiene dos modos de ejecucion mutuamente excluyentes:
 | Modo | Comando | Uso |
 |------|---------|-----|
 | Job individual | `--job nombre` | Un job, con `--reprocess` opcional |
-| Pipeline YAML | `--pipeline ruta.yaml` | Uno o mas jobs con params, `enabled`, consolidacion y modo paralelo opcionales |
+| Pipeline YAML | `--pipeline ruta.yaml` | Uno o mas jobs con params, `enabled`, `schedule`, consolidacion y modo paralelo opcionales |
 
 Para correr multiples jobs o pasar params, usa siempre `--pipeline`. El reprocesamiento (`--reprocess`) es una operacion manual exclusiva de `--job`.
 
@@ -282,6 +282,47 @@ python -m src.main --pipeline config/pipelines/diario.yaml
 ```
 
 Los params se definen como dict YAML nativo — los tipos (`int`, `bool`, `float`, `str`) se preservan directamente en el scraper sin conversion manual.
+
+### Schedule
+
+Permite que cada job del pipeline declare en que dias debe ejecutarse. El pipeline se puede programar para correr diariamente (cron / Task Scheduler) y cada job decide por si solo si le corresponde correr ese dia.
+
+```yaml
+jobs:
+  - name: reporte_mensual
+    schedule:
+      day_of_month: 3     # solo el dia 3 de cada mes
+
+  - name: resumen_semanal
+    schedule:
+      day_of_week: 0      # solo los lunes (0=lunes ... 6=domingo)
+
+  - name: scraping_diario
+    # sin schedule = corre siempre
+```
+
+Los dos campos son combinables con AND logico — si se especifican ambos, el job solo corre si los dos coinciden a la vez.
+
+Cuando un job es omitido por schedule el log indica:
+
+```
+[2/3] Job 'reporte_mensual' omitido: schedule={'day_of_month': 3}, hoy=01/04/2026
+```
+
+**Con consolidacion:** un job omitido por schedule **no bloquea** la consolidacion. El consolidador recibe `None` en lugar de un DataFrame para ese job y decide como manejarlo (ignorar la fuente, consolidar solo los presentes, etc.):
+
+```python
+def consolidate(job_dataframes: dict[str, pd.DataFrame | None], params=None):
+    df_a = job_dataframes["job_a"]          # DataFrame o None
+    df_b = job_dataframes["job_b"]          # DataFrame o None
+
+    frames = [df for df in [df_a, df_b] if df is not None]
+    if not frames:
+        return []
+    return pd.concat(frames, ignore_index=True).to_dict(orient="records")
+```
+
+Un job **fallido** (error inesperado) si bloquea la consolidacion — la distincion es intencional: un skip por schedule es planificado, un fallo no lo es.
 
 ### Ejecucion en paralelo
 
@@ -352,10 +393,10 @@ STORAGE_CONFIG = {
     }
 }
 
-def consolidate(job_dataframes: dict[str, pd.DataFrame], params: dict = None) -> list[dict]:
-    df_a = job_dataframes["job_a"]
+def consolidate(job_dataframes: dict[str, pd.DataFrame | None], params: dict = None) -> list[dict]:
+    df_a = job_dataframes["job_a"]   # None si fue omitido por schedule ese dia
     df_b = job_dataframes["job_b"]
-    # ... logica de combinacion
+    # ... logica de combinacion (verificar None antes de usar cada df)
     return resultado.to_dict(orient="records")
 ```
 

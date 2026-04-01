@@ -12,9 +12,16 @@
 #               Con consolidacion: los jobs corren en paralelo y el merge al final en serie.
 #
 # Campos por job:
-#   name    (obligatorio): nombre del job (carpeta en src/)
-#   params  (opcional):    parametros como dict nativo YAML con tipos reales
-#   enabled (opcional):    false para omitir el job sin borrarlo (default: true)
+#   name     (obligatorio): nombre del job (carpeta en src/)
+#   params   (opcional):    parametros como dict nativo YAML con tipos reales
+#   enabled  (opcional):    false para omitir el job sin borrarlo (default: true)
+#   schedule (opcional):    programacion del job; omitir = ejecutar siempre
+#     day_of_month: 3       ejecutar solo el dia 3 de cada mes (1-31)
+#     day_of_week:  0       ejecutar solo los lunes (0=lunes ... 6=domingo)
+#                           Se pueden combinar (AND logico)
+#
+# Con schedule activo, si un job es omitido por no ser su dia, la consolidacion
+# tambien se omite (faltan datos de ese job).
 #
 # Bloque consolidate (opcional):
 #   enabled (obligatorio): true para activar la consolidacion
@@ -52,6 +59,11 @@ jobs:
   #   enabled: false
   #   params:
   #     region: lima
+
+  # Ejemplo: job con schedule (solo el dia 3 de cada mes)
+  # - name: reporte_mensual
+  #   schedule:
+  #     day_of_month: 3
 
 # Ejemplo: consolidacion activada (descomenta para usar)
 # consolidate:

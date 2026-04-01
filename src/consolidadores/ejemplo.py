@@ -43,17 +43,18 @@ STORAGE_CONFIG = {
 # =========================================================================
 
 
-def consolidate(job_dataframes: dict[str, pd.DataFrame], params: dict = None) -> list[dict]:
+def consolidate(job_dataframes: dict[str, pd.DataFrame | None], params: dict = None) -> list[dict]:
     """
     Combina los outputs de multiples jobs en un unico dataset.
 
-    El framework carga automaticamente los archivos de cada job y los entrega
-    como DataFrames listos para usar. El data engineer solo implementa la logica.
+    El framework entrega los DataFrames de cada job. Si un job fue omitido por
+    schedule ese dia, su valor en el dict es None. El data engineer decide como
+    manejar esa ausencia (ignorar la fuente, usar datos historicos, etc.).
 
     Args:
-        job_dataframes: Mapa de job_name -> DataFrame con los datos del job.
+        job_dataframes: Mapa de job_name -> DataFrame (o None si fue omitido por schedule).
                         Ejemplo:
-                            books_df    = job_dataframes["books_to_scrape"]
+                            books_df     = job_dataframes["books_to_scrape"]   # None si no corrio hoy
                             viviendas_df = job_dataframes["viviendas_adonde"]
         params:         Parametros opcionales definidos en consolidate.params
                         del pipeline YAML.
@@ -67,14 +68,24 @@ def consolidate(job_dataframes: dict[str, pd.DataFrame], params: dict = None) ->
     params = params or {}
 
     # --- Desempaquetar DataFrames por job ---
+    # Si un job tiene schedule y no corrio hoy, su df sera None.
+    # Filtrar las fuentes disponibles antes de concatenar:
     books_df     = job_dataframes["books_to_scrape"]
     viviendas_df = job_dataframes["viviendas_adonde"]
 
     # --- Logica de consolidacion (personalizar segun necesidad) ---
-    books_df["_fuente"]     = "books_to_scrape"
-    viviendas_df["_fuente"] = "viviendas_adonde"
+    frames = []
+    if books_df is not None:
+        books_df["_fuente"] = "books_to_scrape"
+        frames.append(books_df)
+    if viviendas_df is not None:
+        viviendas_df["_fuente"] = "viviendas_adonde"
+        frames.append(viviendas_df)
 
-    consolidado = pd.concat([books_df, viviendas_df], ignore_index=True)
+    if not frames:
+        return []
+
+    consolidado = pd.concat(frames, ignore_index=True)
 
     # =========================================================================
     # FIN ZONA DATA ENGINEER (2/2)
