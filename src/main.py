@@ -133,30 +133,21 @@ def _validate_consolidation(job_entries: list[dict], consolidate_config: dict) -
         raise SystemExit(1)
 
 
-def _run_consolidation(job_outputs: dict[str, Path], consolidate_config: dict) -> dict[str, Path]:
+def _run_consolidation(job_outputs: dict[str, Path], consolidate_config: dict, consolidator) -> dict[str, Path]:
     """
-    Carga el modulo consolidador, ejecuta consolidate() y guarda el resultado.
+    Ejecuta consolidate() con el modulo ya cargado y guarda el resultado.
 
     Args:
         job_outputs:        Mapa job_name -> Path del archivo generado (formato de consolidacion).
         consolidate_config: Bloque 'consolidate' del pipeline YAML.
+        consolidator:       Modulo consolidador ya importado por el caller.
 
     Returns:
         dict[str, Path]: Mapa formato -> ruta del archivo consolidado guardado.
     """
-    module_name = consolidate_config["module"]
     params = consolidate_config.get("params") or {}
 
-    try:
-        consolidator = importlib.import_module(f"src.consolidadores.{module_name}")
-    except ModuleNotFoundError:
-        logger.error(
-            f"Consolidador '{module_name}' no encontrado. "
-            f"Crea el modulo en src/consolidadores/{module_name}.py"
-        )
-        raise SystemExit(1)
-
-    logger.info(f"\nIniciando consolidacion: {module_name}")
+    logger.info(f"\nIniciando consolidacion: {consolidate_config['module']}")
     logger.info(f"Fuentes: {list(job_outputs.keys())}")
 
     consolidation_fmt = consolidate_config["format"]
@@ -312,7 +303,7 @@ def _run_parallel(
             base_filename = consolidator.STORAGE_CONFIG.get("filename")
             consolidation_paths: dict[str, Path] = {}
             try:
-                consolidation_paths = _run_consolidation(job_outputs, consolidate_config)
+                consolidation_paths = _run_consolidation(job_outputs, consolidate_config, consolidator)
             except SystemExit:
                 raise
             except Exception as e:
@@ -389,7 +380,7 @@ def _run_series(job_entries: list[dict], consolidate_config: dict | None = None,
             base_filename = consolidator.STORAGE_CONFIG.get("filename")
             consolidation_paths: dict[str, Path] = {}
             try:
-                consolidation_paths = _run_consolidation(job_outputs, consolidate_config)
+                consolidation_paths = _run_consolidation(job_outputs, consolidate_config, consolidator)
             except SystemExit:
                 raise
             except Exception as e:

@@ -251,10 +251,7 @@ def cleanup_raw(storage_config: dict) -> None:
         return
 
     files: list[Path] = sorted(
-        [
-            f for f in raw_folder.iterdir()
-            if f.name.startswith(f"{filename}_") and f.suffix == f".{format}"
-        ],
+        raw_folder.glob(f"{filename}_*.{format}"),
         key=lambda f: _parse_raw_timestamp(f) or datetime.min
     )
 
@@ -336,7 +333,8 @@ def merge_logs_to_latest(folder: str, log_paths: list[Path]) -> None:
                 out.write(f"{'='*60}\n")
                 out.write(f"LOG: {log_path.name}\n")
                 out.write(f"{'='*60}\n")
-                out.write(log_path.read_text(encoding="utf-8"))
+                with open(log_path, "r", encoding="utf-8") as log_file:
+                    shutil.copyfileobj(log_file, out)
                 out.write("\n")
 
     logger.info(f"Log consolidado en: {merged_log}")

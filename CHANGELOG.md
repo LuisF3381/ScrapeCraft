@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0] - 2026-03-31
+
+### Changed
+- `src/main.py` `_run_consolidation()`: el modulo consolidador se recibe como parametro en lugar de importarse internamente; `_run_series()` y `_run_parallel()` importan el consolidador una sola vez con `importlib` y lo pasan a `_run_consolidation()`, eliminando la importacion redundante que ocurria tres veces (una por cada llamada)
+- `src/shared/storage.py` `cleanup_raw()`: reemplazado `raw_folder.iterdir()` + filtro `startswith`/`suffix` por `raw_folder.glob(f"{filename}_*.{format}")` — filtra directamente en el sistema de archivos sin iterar ni filtrar en Python
+- `src/shared/storage.py` `merge_logs_to_latest()`: reemplazado `log_path.read_text()` por `shutil.copyfileobj()` con el archivo abierto en modo lectura — copia en streaming sin cargar el log completo en RAM; relevante para logs de pipelines con muchos jobs o runs muy verbosos
+
 ## [0.50.0] - 2026-03-31
 
 ### Added
